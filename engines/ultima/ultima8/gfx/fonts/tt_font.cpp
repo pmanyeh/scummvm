@@ -33,8 +33,8 @@ namespace Ultima8 {
 static const uint16 BULLETS[] = { 0x2022, 0x30FB, 0x25CF, 0 };
 
 TTFont::TTFont(Graphics::Font *font, uint32 rgb, int borderSize,
-		bool antiAliased, bool SJIS) :
-		_borderSize(borderSize), _ttfFont(font), _antiAliased(antiAliased), _SJIS(SJIS),
+		bool antiAliased, bool SJIS, bool utf8) :
+		_borderSize(borderSize), _ttfFont(font), _antiAliased(antiAliased), _SJIS(SJIS), _utf8(utf8),
 		_PF_RGBA(Graphics::PixelFormat(4, 8, 8, 8, 8, 24, 16, 8, 0)) {
 	_color = _PF_RGBA.RGBToColor((rgb >> 16) & 0xFF, (rgb >> 8) & 0xff, rgb & 0xff);
 
@@ -74,16 +74,19 @@ int TTFont::getBaselineSkip() {
 
 template<class T>
 static Common::U32String toUnicode(const Common::String &text, uint16 bullet) {
+	// Build by appending. Pre-sizing with the (UTF-8 decoding)
+	// U32String(const char *, len) constructor yields fewer than len
+	// characters for multi-byte text, and setChar() then asserts.
 	Common::String::size_type len = T::length(text);
-	Common::U32String result = Common::U32String(text.c_str(), len);
+	Common::U32String result;
 
 	Common::String::const_iterator iter = text.begin();
 	for (uint idx = 0; idx < len; ++idx) {
 		uint32 u = T::unicode(iter);
 		if (u == '@') {
-			result.setChar(bullet, idx);
+			result += (Common::u32char_type_t)bullet;
 		} else {
-			result.setChar(u, idx);
+			result += (Common::u32char_type_t)u;
 		}
 	}
 
@@ -93,7 +96,9 @@ static Common::U32String toUnicode(const Common::String &text, uint16 bullet) {
 void TTFont::getStringSize(const Common::String &text, int32 &width, int32 &height) {
 	// convert to unicode
 	Common::U32String unicodeText;
-	if (!_SJIS)
+	if (_utf8)
+		unicodeText = toUnicode<UTF8Traits>(text, _bullet);
+	else if (!_SJIS)
 		unicodeText = toUnicode<Traits>(text, _bullet);
 	else
 		unicodeText = toUnicode<SJISTraits>(text, _bullet);
@@ -111,7 +116,11 @@ void TTFont::getTextSize(const Common::String &text,
 						 int32 width, int32 height, TextAlign align,
 						 bool u8specials, bool pagebreaks) {
 	Common::List<PositionedText> tmp;
-	if (!_SJIS)
+	if (_utf8)
+		tmp = typesetText<UTF8Traits>(this, text, remaining,
+		                              width, height, align, u8specials, pagebreaks,
+		                              resultWidth, resultHeight);
+	else if (!_SJIS)
 		tmp = typesetText<Traits>(this, text, remaining,
 		                          width, height, align, u8specials, pagebreaks,
 		                          resultWidth, resultHeight);
@@ -197,7 +206,10 @@ RenderedText *TTFont::renderText(const Common::String &text, unsigned int &remai
 		Common::String::size_type cursor) {
 	int32 resultWidth, resultHeight, lineHeight;
 	Common::List<PositionedText> lines;
-	if (!_SJIS)
+	if (_utf8)
+		lines = typesetText<UTF8Traits>(this, text, remaining, width, height, align, u8specials, pagebreaks,
+			resultWidth, resultHeight, cursor);
+	else if (!_SJIS)
 		lines = typesetText<Traits>(this, text, remaining, width, height, align, u8specials, pagebreaks,
 			resultWidth, resultHeight, cursor);
 	else
@@ -213,7 +225,9 @@ RenderedText *TTFont::renderText(const Common::String &text, unsigned int &remai
 	for (const auto &line : lines) {
 		// convert to unicode
 		Common::U32String unicodeText;
-		if (!_SJIS)
+		if (_utf8)
+			unicodeText = toUnicode<UTF8Traits>(line._text, _bullet);
+		else if (!_SJIS)
 			unicodeText = toUnicode<Traits>(line._text, _bullet);
 		else
 			unicodeText = toUnicode<SJISTraits>(line._text, _bullet);

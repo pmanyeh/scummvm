@@ -144,12 +144,89 @@ bool Font::SJISTraits::canBreakAfter(Common::String::const_iterator &i) {
 	return true;
 }
 
+static bool isCJK(uint32 u) {
+	return (u >= 0x2E80 && u <= 0x9FFF) ||   // CJK radicals .. unified ideographs
+	       (u >= 0xF900 && u <= 0xFAFF) ||   // CJK compatibility ideographs
+	       (u >= 0xFE30 && u <= 0xFE4F) ||   // CJK compatibility forms
+	       (u >= 0xFF00 && u <= 0xFFEF) ||   // fullwidth forms
+	       (u >= 0x20000 && u <= 0x2FA1F);   // CJK extensions
+}
+
+//static
+bool Font::UTF8Traits::canBreakAfter(Common::String::const_iterator &i) {
+	// Traditional Chinese line breaking rules (kinsoku)
+	Common::String::const_iterator j = i;
+	uint32 u1 = unicode(j);
+
+	// never end a line with an opening bracket
+	switch (u1) {
+	case 0xff08: // fullwidth left parenthesis
+	case 0x300a: // left double angle bracket
+	case 0x300c: // left corner bracket
+	case 0x300e: // left white corner bracket
+	case 0x3010: // left black lenticular bracket
+	case 0x3008: // left angle bracket
+	case 0x2018: // '
+	case 0x201c: // "
+		return false;
+	default:
+		break;
+	}
+
+	// never start a line with closing punctuation
+	uint32 u2 = unicode(j);
+	switch (u2) {
+	case 0xff0c: // fullwidth comma
+	case 0x3002: // ideographic full stop
+	case 0xff01: // fullwidth exclamation mark
+	case 0xff1f: // fullwidth question mark
+	case 0xff1a: // fullwidth colon
+	case 0xff1b: // fullwidth semicolon
+	case 0x3001: // ideographic comma
+	case 0xff09: // fullwidth right parenthesis
+	case 0x300b: // right double angle bracket
+	case 0x300d: // right corner bracket
+	case 0x300f: // right white corner bracket
+	case 0x3011: // right black lenticular bracket
+	case 0x3009: // right angle bracket
+	case 0x2019: // '
+	case 0x201d: // "
+	case 0x2026: // horizontal ellipsis
+	case 0x2014: // em dash
+		return false;
+	default:
+		break;
+	}
+
+	// don't break inside latin words or numbers
+	bool alnum1 = (u1 >= 'A' && u1 <= 'Z') || (u1 >= 'a' && u1 <= 'z') || (u1 >= '0' && u1 <= '9');
+	bool alnum2 = (u2 >= 'A' && u2 <= 'Z') || (u2 >= 'a' && u2 <= 'z') || (u2 >= '0' && u2 <= '9');
+	if (alnum1 && alnum2)
+		return false;
+
+	return true;
+}
+
+//static
+bool Font::UTF8Traits::endsWord(Common::String::const_iterator &i) {
+	// Every CJK character is a word of its own, subject to the kinsoku
+	// rules in canBreakAfter, so text like "Lurker" + CJK can wrap
+	Common::String::const_iterator j = i;
+	uint32 u1 = unicode(j);
+	uint32 u2 = unicode(j);
+	if (!isCJK(u1) && !isCJK(u2))
+		return false;
+	return canBreakAfter(i);
+}
+
 template<class T>
 static void findWordEnd(const Common::String &text,
 						Common::String::const_iterator &iter, bool u8specials) {
 	while (iter != text.end()) {
 		if (T::isSpace(iter, u8specials)) return;
+		bool wordEnd = T::endsWord(iter);
 		T::advance(iter);
+		if (wordEnd) return;
 	}
 }
 
@@ -318,6 +395,13 @@ Common::List<PositionedText> typesetText(Font *font,
 						iter = saveiter_fail;
 						curline = curline_fail;
 					}
+					// A single character wider than the line: give it a line
+					// of its own instead of looping forever without progress
+					if (iter == nextword && iter != text.end()) {
+						T::advance(iter);
+						curline = spaces + text.substr(nextword - text.begin(),
+						                               iter - nextword);
+					}
 				}
 				breakhere = true;
 				continue;
@@ -374,6 +458,13 @@ Common::List<PositionedText> typesetText<Font::Traits>
 
 template
 Common::List<PositionedText> typesetText<Font::SJISTraits>
+(Font *font, const Common::String &text,
+ unsigned int &remaining, int32 width, int32 height,
+ Font::TextAlign align, bool u8specials, bool pagebreaks,
+ int32 &resultwidth, int32 &resultheight, Common::String::size_type cursor);
+
+template
+Common::List<PositionedText> typesetText<Font::UTF8Traits>
 (Font *font, const Common::String &text,
  unsigned int &remaining, int32 width, int32 height,
  Font::TextAlign align, bool u8specials, bool pagebreaks,

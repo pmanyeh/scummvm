@@ -126,6 +126,11 @@ protected:
 			return (u8specials && c == '*');
 		}
 		static bool canBreakAfter(Common::String::const_iterator &i);
+		// True if a line may break after this character even without a
+		// following space (CJK). Always false for 8-bit and SJIS text.
+		static bool endsWord(Common::String::const_iterator &i) {
+			return false;
+		}
 		static void advance(Common::String::const_iterator &i) {
 			++i;
 		}
@@ -161,6 +166,60 @@ protected:
 				s |= (t << 8);
 			}
 			return shiftjis_to_unicode(s);
+		}
+	};
+	// UTF-8 text (localized display strings).
+	// A byte that does not start a valid UTF-8 sequence is decoded on its own
+	// with the legacy 8-bit table, so original game text (which contains a few
+	// CP437 accented characters) still renders exactly as before.
+	// Common::String is NUL terminated, so validation never reads past the end.
+	struct UTF8Traits : public Traits {
+		static bool canBreakAfter(Common::String::const_iterator &i);
+		static bool endsWord(Common::String::const_iterator &i);
+		//! Length of the valid UTF-8 sequence at i, or 0 if it is not valid
+		static int sequenceLength(Common::String::const_iterator i) {
+			uint8 c = *i;
+			int n;
+			if (c < 0x80)
+				return 1;
+			else if (c >= 0xC2 && c <= 0xDF)
+				n = 2;
+			else if (c >= 0xE0 && c <= 0xEF)
+				n = 3;
+			else if (c >= 0xF0 && c <= 0xF4)
+				n = 4;
+			else
+				return 0;
+			for (int k = 1; k < n; k++) {
+				if ((static_cast<uint8>(i[k]) & 0xC0) != 0x80)
+					return 0;
+			}
+			return n;
+		}
+		static void advance(Common::String::const_iterator &i) {
+			int n = sequenceLength(i);
+			i += n ? n : 1;
+		}
+		static Common::String::size_type length(const Common::String &t) {
+			Common::String::size_type l = 0;
+			Common::String::const_iterator iter = t.begin();
+			while (iter != t.end()) {
+				advance(iter);
+				l++;
+			}
+			return l;
+		}
+		static uint32 unicode(Common::String::const_iterator &i) {
+			int n = sequenceLength(i);
+			uint8 c = *i++;
+			if (n == 0)
+				return encoding[c];
+			if (n == 1)
+				return c;
+			uint32 u = c & (0xFF >> (n + 1));
+			for (int k = 1; k < n; k++)
+				u = (u << 6) | (static_cast<uint8>(*i++) & 0x3F);
+			return u;
 		}
 	};
 };

@@ -72,6 +72,10 @@ private:
 	//! Override fontnum with specified font
 	void setOverride(unsigned int fontnum, Font *newFont);
 
+	bool addTTFOverride(unsigned int fontnum, const Common::Path &filename,
+	                    int pointsize, uint32 rgb, int bordersize,
+	                    bool antialiasing, bool SJIS, bool utf8);
+
 	Common::Array<Font *> _overrides;
 
 	Common::Array<Font *> _ttFonts;
@@ -104,6 +108,12 @@ public:
 	bool addTTFOverride(unsigned int fontnum, const Common::Path &filename,
 	                    int pointsize, uint32 rgb, int bordersize,
 	                    bool SJIS = false);
+
+	//! override a game font with a TTF that renders UTF-8 text (CJK).
+	//! Antialiasing is set per font so pixel fonts can turn it off.
+	bool addCJKOverride(unsigned int fontnum, const Common::Path &filename,
+	                    int pointsize, uint32 rgb, int bordersize,
+	                    bool antialiasing);
 
 	//! override a game font with a Japanese font.
 	//! \param fontnum the font to override

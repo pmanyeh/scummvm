@@ -77,6 +77,7 @@ Debugger::Debugger() : GUI::Debugger() {
 	registerCmd("Ultima8Engine::togglePaintEditorItems", WRAP_METHOD(Debugger, cmdShowEditorItems));
 	registerCmd("Ultima8Engine::toggleShowTouchingItems", WRAP_METHOD(Debugger, cmdShowTouchingItems));
 	registerCmd("Ultima8Engine::closeItemGumps", WRAP_METHOD(Debugger, cmdCloseItemGumps));
+	registerCmd("Ultima8Engine::barkTestFile", WRAP_METHOD(Debugger, cmdBarkTestFile));
 
 	registerCmd("CameraProcess::moveToAvatar", WRAP_METHOD(Debugger, cmdCameraOnAvatar));
 
@@ -291,6 +292,42 @@ bool Debugger::cmdCloseItemGumps(int argc, const char **argv) {
 	Ultima8Engine *g = Ultima8Engine::get_instance();
 	g->getDesktopGump()->CloseItemDependents();
 	return false;
+}
+
+bool Debugger::cmdBarkTestFile(int argc, const char **argv) {
+	if (argc < 2 || argc > 3) {
+		debugPrintf("Usage: %s <file> [line]\n", argv[0]);
+		debugPrintf("Makes the avatar bark one line (default 1) of a text file,\n");
+		debugPrintf("e.g. to check UTF-8 / CJK font rendering. '#' lines are skipped.\n");
+		return true;
+	}
+
+	MainActor *av = getMainActor();
+	if (!av) {
+		debugPrintf("No main actor\n");
+		return true;
+	}
+
+	Common::File f;
+	if (!f.open(Common::Path(argv[1]))) {
+		debugPrintf("Cannot open %s\n", argv[1]);
+		return true;
+	}
+
+	int wanted = argc == 3 ? atoi(argv[2]) : 1;
+	int n = 0;
+	while (!f.eos()) {
+		Common::String line = f.readLine();
+		if (line.empty() || line[0] == '#')
+			continue;
+		if (++n == wanted) {
+			av->bark(line);
+			return false;
+		}
+	}
+
+	debugPrintf("%s has only %d text lines\n", argv[1], n);
+	return true;
 }
 
 bool Debugger::cmdListSFX(int argc, const char **argv) {

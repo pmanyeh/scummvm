@@ -137,12 +137,25 @@ void FontManager::setOverride(unsigned int fontnum, Font *newFont) {
 bool FontManager::addTTFOverride(unsigned int fontnum, const Common::Path &filename,
 								 int pointsize, uint32 rgb, int bordersize,
 								 bool SJIS) {
-	bool antialiasing = ConfMan.getBool("font_antialiasing");
+	return addTTFOverride(fontnum, filename, pointsize, rgb, bordersize,
+	                      ConfMan.getBool("font_antialiasing"), SJIS, false);
+}
+
+bool FontManager::addCJKOverride(unsigned int fontnum, const Common::Path &filename,
+								 int pointsize, uint32 rgb, int bordersize,
+								 bool antialiasing) {
+	return addTTFOverride(fontnum, filename, pointsize, rgb, bordersize,
+	                      antialiasing, false, true);
+}
+
+bool FontManager::addTTFOverride(unsigned int fontnum, const Common::Path &filename,
+								 int pointsize, uint32 rgb, int bordersize,
+								 bool antialiasing, bool SJIS, bool utf8) {
 	Graphics::Font *f = getTTF_Font(filename, pointsize, antialiasing);
 	if (!f)
 		return false;
 
-	TTFont *font = new TTFont(f, rgb, bordersize, antialiasing, SJIS);
+	TTFont *font = new TTFont(f, rgb, bordersize, antialiasing, SJIS, utf8);
 	bool highres = ConfMan.getBool("font_highres");
 	font->setHighRes(highres);
 

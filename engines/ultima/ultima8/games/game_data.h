@@ -116,6 +116,7 @@ private:
 	void loadTranslation();
 	void setupTTFOverrides(const char *category, bool SJIS);
 	void setupJPOverrides();
+	void setupCJKOverrides();
 
 	RawArchive *_fixed;
 	MainShapeArchive *_mainShapes;

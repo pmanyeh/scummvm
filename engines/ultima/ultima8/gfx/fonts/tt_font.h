@@ -32,7 +32,7 @@ namespace Ultima8 {
 class TTFont : public Font {
 public:
 	TTFont(Graphics::Font *font, uint32 rgb, int bordersize,
-	       bool antiAliased, bool SJIS);
+	       bool antiAliased, bool SJIS, bool utf8 = false);
 	~TTFont() override;
 
 	int getHeight() override;
@@ -63,6 +63,7 @@ protected:
 	int _borderSize;
 	bool _antiAliased;
 	bool _SJIS;
+	bool _utf8;
 	Graphics::PixelFormat _PF_RGBA;
 
 	uint16 _bullet;
