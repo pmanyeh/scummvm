@@ -50,6 +50,7 @@ private:
 	bool cmdBarkTestFile(int argc, const char **argv);
 	bool cmdLocalizationInfo(int argc, const char **argv);
 	bool cmdLocalizationBark(int argc, const char **argv);
+	bool cmdLocalizationGravestone(int argc, const char **argv);
 
 	bool cmdCameraOnAvatar(int argc, const char **argv);
 

@@ -77,6 +77,17 @@ public:
 	//! Display text for a conversation answer
 	Common::String translateAnswer(uint16 classId, const Common::String &source) const;
 
+	/**
+	 * Display text for an engine string ("ui" context) drawn with the given
+	 * game font. English if there is no translation or the font cannot
+	 * draw UTF-8.
+	 */
+	Common::String translateUI(const Common::String &english, int fontnum) const;
+
+	//! Engine text: the localized text if there is one, else the game's
+	//! own translation (_TL_)
+	static Common::String uiText(const Common::String &english, int fontnum);
+
 	//! Class of the running usecode process (0 if none)
 	static uint16 runningClassId();
 

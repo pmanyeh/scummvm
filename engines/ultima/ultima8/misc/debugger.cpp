@@ -47,6 +47,7 @@
 #include "ultima/ultima8/ultima8.h"
 #include "ultima/ultima8/usecode/bit_set.h"
 #include "ultima/ultima8/usecode/uc_machine.h"
+#include "ultima/ultima8/world/actors/avatar_death_process.h"
 #include "ultima/ultima8/world/actors/avatar_mover_process.h"
 #include "ultima/ultima8/world/actors/main_actor.h"
 #include "ultima/ultima8/world/actors/pathfinder.h"
@@ -81,6 +82,7 @@ Debugger::Debugger() : GUI::Debugger() {
 	registerCmd("Ultima8Engine::barkTestFile", WRAP_METHOD(Debugger, cmdBarkTestFile));
 	registerCmd("Localization::info", WRAP_METHOD(Debugger, cmdLocalizationInfo));
 	registerCmd("Localization::bark", WRAP_METHOD(Debugger, cmdLocalizationBark));
+	registerCmd("Localization::gravestone", WRAP_METHOD(Debugger, cmdLocalizationGravestone));
 
 	registerCmd("CameraProcess::moveToAvatar", WRAP_METHOD(Debugger, cmdCameraOnAvatar));
 
@@ -369,6 +371,16 @@ bool Debugger::cmdLocalizationBark(int argc, const char **argv) {
 		return true;
 	}
 	av->bark(source, translation);
+	return false;
+}
+
+bool Debugger::cmdLocalizationGravestone(int argc, const char **argv) {
+	if (!GAME_IS_U8) {
+		debugPrintf("Only in Ultima VIII\n");
+		return true;
+	}
+	// Only the gravestone of the death screen, the avatar does not die
+	AvatarDeathProcess::showGravestone();
 	return false;
 }
 

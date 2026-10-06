@@ -27,6 +27,7 @@
 #include "gui/message.h"
 #include "ultima/ultima8/filesys/savegame.h"
 #include "ultima/ultima8/games/game_data.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/gfx/shape.h"
 #include "ultima/ultima8/gfx/shape_frame.h"
 #include "ultima/ultima8/gumps/paged_gump.h"
@@ -39,6 +40,9 @@ namespace Ultima {
 namespace Ultima8 {
 
 static const int entryfont = 4;
+// The diary font has no TTF override; localized text uses the book font
+// (black on paper as well)
+static const int localizedentryfont = 9;
 
 DEFINE_RUNTIME_CLASSTYPE_CODE(U8SaveGump)
 
@@ -118,9 +122,10 @@ void U8SaveGump::InitGump(Gump *newparent, bool take_focus) {
 
 		if (index == 0) {
 			// special case for 'The Beginning...' _save
-			Gump *widget = new TextWidget(xbase, entryheight + 4 + 40 * yi,
-			                              _TL_("The Beginning..."),
-			                              true, entryfont, 95);
+			Common::String beginning = Localization::uiText("The Beginning...", localizedentryfont);
+			bool localized = beginning != _TL_("The Beginning...");
+			Gump *widget = new TextWidget(xbase, entryheight + 4 + 40 * yi, beginning,
+			                              true, localized ? localizedentryfont : entryfont, 95);
 			widget->InitGump(this, false);
 
 		} else {

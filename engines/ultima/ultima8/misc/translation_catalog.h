@@ -41,6 +41,7 @@ namespace Ultima8 {
  *   bark CCCC:IIII   NPC speech: usecode class and IP of the bark intrinsic call
  *   ask CCCC         conversation answer: usecode class that called ask
  *   param CCCC:NAME  value of a sentence parameter (NAME = varXX or call_XXXX)
+ *   ui               engine text (menus, labels), identified by its English text
  *
  * (hex, case-insensitive in the file). The msgid is the exact English text,
  * including trailing spaces; an entry is only used when it matches the text

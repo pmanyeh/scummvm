@@ -24,6 +24,7 @@
 #include "ultima/ultima8/gumps/menu_gump.h"
 #include "ultima/ultima8/gumps/cru_menu_gump.h"
 #include "ultima/ultima8/games/game_data.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/gfx/gump_shape_archive.h"
 #include "ultima/ultima8/gfx/shape.h"
 #include "ultima/ultima8/gfx/shape_frame.h"
@@ -132,11 +133,13 @@ void MenuGump::InitGump(Gump *newparent, bool take_focus) {
 				frame_up = _TL_SHP_(frame_up);
 				frame_down = _TL_SHP_(frame_down);
 				Gump *widget;
-				if (frame_up._shapeNum) {
+				Common::String label = Localization::uiText(MENU_TXT[i], 0);
+				bool localized = label != _TL_(MENU_TXT[i]);
+				if (frame_up._shapeNum && !localized) {
 					widget = new ButtonWidget(x, y, frame_up, frame_down, true);
 				} else {
-					// JA U8 has text labels
-					widget = new ButtonWidget(x, y, _TL_(MENU_TXT[i]), true, 0);
+					// JA U8 and localized menus have text labels
+					widget = new ButtonWidget(x, y, label, true, 0);
 				}
 				widget->InitGump(this, false);
 				widget->SetIndex(i + 1);
@@ -158,7 +161,7 @@ void MenuGump::InitGump(Gump *newparent, bool take_focus) {
 		}
 	} else {
 		Gump *widget;
-		widget = new TextWidget(0, 0, _TL_("Give thy name:"), true, 6); // CONSTANT!
+		widget = new TextWidget(0, 0, Localization::uiText("Give thy name:", 6), true, 6); // CONSTANT!
 		widget->InitGump(this, false);
 		widget->Move(_dims.width() / 2 + 6, 10);
 

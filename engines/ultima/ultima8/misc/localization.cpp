@@ -26,6 +26,9 @@
 
 #include "ultima/ultima.h"
 #include "ultima/ultima8/misc/localization.h"
+#include "ultima/ultima8/games/game_data.h"
+#include "ultima/ultima8/gfx/fonts/font.h"
+#include "ultima/ultima8/gfx/fonts/font_manager.h"
 #include "ultima/ultima8/kernel/kernel.h"
 #include "ultima/ultima8/usecode/uc_process.h"
 
@@ -151,6 +154,25 @@ Common::String Localization::translateBark(const Common::String &source) const {
 
 Common::String Localization::translateAnswer(uint16 classId, const Common::String &source) const {
 	return translate(TranslationCatalog::askContext(classId), source);
+}
+
+Common::String Localization::translateUI(const Common::String &english, int fontnum) const {
+	if (!isActive())
+		return english;
+	Font *font = FontManager::get_instance()->getGameFont(fontnum, true);
+	if (!font || !font->isUTF8())
+		return english;
+	return translate("ui", english);
+}
+
+Common::String Localization::uiText(const Common::String &english, int fontnum) {
+	Localization *l10n = get_instance();
+	if (l10n) {
+		Common::String text = l10n->translateUI(english, fontnum);
+		if (text != english)
+			return text;
+	}
+	return _TL_(english);
 }
 
 uint16 Localization::runningClassId() {

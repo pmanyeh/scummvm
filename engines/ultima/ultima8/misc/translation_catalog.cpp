@@ -91,6 +91,10 @@ Common::String TranslationCatalog::canonicalParam(const Common::String &name) {
 
 bool TranslationCatalog::canonicalContext(const Common::String &context, Common::String &canonical) {
 	uint16 classId = 0, ip = 0;
+	if (context == "ui") {
+		canonical = context;
+		return true;
+	}
 	if (context.hasPrefix("bark ")) {
 		Common::String id = context.substr(5);
 		size_t colon = id.findFirstOf(':');

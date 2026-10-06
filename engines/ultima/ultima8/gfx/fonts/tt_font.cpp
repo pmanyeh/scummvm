@@ -256,8 +256,12 @@ RenderedText *TTFont::renderText(const Common::String &text, unsigned int &remai
 			const byte *surfrow = (const byte *)textSurf.getBasePtr(0, y);
 
 			int ty = line._dims.top + y + _borderSize;
+			if (ty < 0 || ty >= resultHeight)
+				continue;
 			for (int x = 0; x < textSurf.w; x++) {
 				int tx = line._dims.left + x + _borderSize;
+				if (tx < 0 || tx >= resultWidth)
+					continue;
 				if (_antiAliased) {
 					uint32 sColor = *((const uint32 *)(surfrow + x * 4));
 					uint8 sR, sG, sB, sA;
@@ -292,14 +296,28 @@ RenderedText *TTFont::renderText(const Common::String &text, unsigned int &remai
 
 		if (line._cursor != Common::String::npos) {
 			assert(line._cursor <= line._text.size());
-			unicodeText = unicodeText.substr(0, line._cursor);
+			// The cursor is a byte offset; convert the text before it the
+			// same way as the line (a multi-byte character is one glyph)
+			Common::String before = line._text.substr(0, line._cursor);
+			Common::U32String unicodeBefore;
+			if (_utf8)
+				unicodeBefore = toUnicode<UTF8Traits>(before, _bullet);
+			else if (!_SJIS)
+				unicodeBefore = toUnicode<Traits>(before, _bullet);
+			else
+				unicodeBefore = toUnicode<SJISTraits>(before, _bullet);
 
-			int w = _ttfFont->getStringWidth(unicodeText);
+			int w = _ttfFont->getStringWidth(unicodeBefore);
 
-			for (int y = 0; y < line._dims.height(); y++) {
-				int tx = line._dims.left + w + _borderSize;
-				int ty = line._dims.top + y;
-				texBuf[ty * resultWidth + tx] = borderColor;
+			// The cursor can be just past the end of the line or below a
+			// box lower than the font: stay inside the texture
+			int tx = line._dims.left + w + _borderSize;
+			if (tx >= 0 && tx < resultWidth) {
+				for (int y = 0; y < line._dims.height(); y++) {
+					int ty = line._dims.top + y;
+					if (ty >= 0 && ty < resultHeight)
+						texBuf[ty * resultWidth + tx] = borderColor;
+				}
 			}
 		}
 	}

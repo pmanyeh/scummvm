@@ -35,6 +35,9 @@ public:
 
 	void run() override;
 
+	//! Show the U8 avatar gravestone; returns its notify process id
+	static ProcId showGravestone();
+
 	bool loadData(Common::ReadStream *rs, uint32 version);
 	void saveData(Common::WriteStream *ws) override;
 };

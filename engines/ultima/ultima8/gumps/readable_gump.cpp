@@ -41,8 +41,10 @@ ReadableGump::ReadableGump()
 
 }
 
-ReadableGump::ReadableGump(ObjId owner, uint16 shape, int font, const Common::String &msg) :
-	ModalGump(0, 0, 100, 100, owner), _shapeNum(shape), _fontNum(font), _text(msg) {
+ReadableGump::ReadableGump(ObjId owner, uint16 shape, int font, const Common::String &msg,
+                           const Common::String &subtitle) :
+	ModalGump(0, 0, 100, 100, owner), _shapeNum(shape), _fontNum(font), _text(msg),
+	_subtitle(subtitle) {
 }
 
 ReadableGump::~ReadableGump(void) {
@@ -70,6 +72,13 @@ void ReadableGump::InitGump(Gump *newparent, bool take_focus) {
 			subwidget->InitGump(this);
 			subwidget->setRelativePosition(BOTTOM_CENTER, 0, -8);
 		}
+	}
+
+	if (!_subtitle.empty()) {
+		// Localized text: shown below the original, like the Japanese subtitles
+		Gump *subwidget = new TextWidget(0, 0, _subtitle, true, jpsub_font, 0, 0, Font::TEXT_CENTER);
+		subwidget->InitGump(this);
+		subwidget->setRelativePosition(BOTTOM_CENTER, 0, -8);
 	}
 
 	Gump *widget = new TextWidget(0, 0, _text, true, _fontNum, _dims.width() - 16, 0, Font::TEXT_CENTER);

@@ -37,11 +37,13 @@ class ReadableGump : public ModalGump {
 	uint16 _shapeNum;
 	int _fontNum;
 	Common::String _text;
+	Common::String _subtitle; //!< shown below the text in the dialog font (not saved)
 public:
 	ENABLE_RUNTIME_CLASSTYPE()
 
 	ReadableGump();
-	ReadableGump(ObjId owner, uint16 shape, int font, const Common::String &msg);
+	ReadableGump(ObjId owner, uint16 shape, int font, const Common::String &msg,
+	             const Common::String &subtitle = Common::String());
 	~ReadableGump() override;
 
 	// Close on mouse click on key press

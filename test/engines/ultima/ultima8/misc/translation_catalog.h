@@ -103,6 +103,9 @@ public:
 		TS_ASSERT(!TranslationCatalog::canonicalContext("param 040A:name", c));
 		TS_ASSERT(!TranslationCatalog::canonicalContext("param 040A", c));
 		TS_ASSERT(!TranslationCatalog::canonicalContext("talk 0402", c));
+		TS_ASSERT(TranslationCatalog::canonicalContext("ui", c));
+		TS_ASSERT_EQUALS(c, "ui");
+		TS_ASSERT(!TranslationCatalog::canonicalContext("ui 1", c));
 		TS_ASSERT(!TranslationCatalog::canonicalContext("", c));
 	}
 

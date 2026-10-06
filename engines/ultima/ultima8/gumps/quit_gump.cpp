@@ -22,6 +22,7 @@
 #include "ultima/ultima8/audio/audio_process.h"
 #include "ultima/ultima8/gumps/quit_gump.h"
 #include "ultima/ultima8/games/game_data.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/gfx/gump_shape_archive.h"
 #include "ultima/ultima8/gfx/shape.h"
 #include "ultima/ultima8/gfx/shape_frame.h"
@@ -99,10 +100,11 @@ void QuitGump::InitGump(Gump *newparent, bool take_focus) {
 		FrameID askshape(GameData::GUMPS, _askShape, 0);
 		askshape = _TL_SHP_(askshape);
 
-		if (askshape._shapeNum == 0) {
-			// In JP U8, the ask gump is replaced with text
-			// confirming quit
-			Common::String askstr = _TL_("Quit the game?");
+		Common::String askstr = Localization::uiText("Quit the game?", 6);
+		bool localized = askstr != _TL_("Quit the game?");
+		if (askshape._shapeNum == 0 || localized) {
+			// In JP U8 (and when localized), the ask gump is replaced
+			// with text confirming quit
 			Gump *widget = new TextWidget(0, 0, askstr, true, 6); // CONSTANT!
 			widget->InitGump(this, false);
 			widget->setRelativePosition(TOP_CENTER, 0, 13);

@@ -24,6 +24,7 @@
 #include "ultima/ultima8/world/actors/main_actor.h"
 #include "ultima/ultima8/gumps/readable_gump.h"
 #include "ultima/ultima8/games/game_data.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/kernel/kernel.h"
 #include "ultima/ultima8/ultima8.h"
 #include "ultima/ultima8/kernel/delay_process.h"
@@ -67,13 +68,7 @@ void AvatarDeathProcess::run() {
 	Kernel::get_instance()->addProcess(menuproc);
 
 	if (GAME_IS_U8) {
-		// Show the avatar gravestone
-		ReadableGump *gump = new ReadableGump(1, 27, 11,
-											  _TL_("HERE LIES*THE AVATAR*REST IN PEACE"));
-		gump->InitGump(0);
-		gump->setRelativePosition(Gump::CENTER);
-		Process *gumpproc = gump->GetNotifyProcess();
-		menuproc->waitFor(gumpproc);
+		menuproc->waitFor(showGravestone());
 	} else {
 		// Play "Silencer Terminated" audio and wait
 		// a couple of seconds before showing menu
@@ -86,6 +81,22 @@ void AvatarDeathProcess::run() {
 
 	// done
 	terminate();
+}
+
+ProcId AvatarDeathProcess::showGravestone() {
+	// A localized epitaph is shown as a subtitle below the engraving
+	static const char *epitaph = "HERE LIES*THE AVATAR*REST IN PEACE";
+	Common::String subtitle;
+	Localization *l10n = Localization::get_instance();
+	if (l10n) {
+		subtitle = l10n->translateUI(epitaph, 6);
+		if (subtitle == epitaph)
+			subtitle.clear();
+	}
+	ReadableGump *gump = new ReadableGump(1, 27, 11, _TL_(epitaph), subtitle);
+	gump->InitGump(0);
+	gump->setRelativePosition(Gump::CENTER);
+	return gump->GetNotifyProcess()->getPid();
 }
 
 void AvatarDeathProcess::saveData(Common::WriteStream *ws) {
