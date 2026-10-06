@@ -55,6 +55,12 @@ public:
 		return _classId;
 	}
 
+	//! IP of the current instruction. Inside an intrinsic this is the
+	//! call instruction, as the IP is only advanced after it returns.
+	uint16 getIp() const {
+		return _ip;
+	}
+
 	Common::String dumpInfo() const override;
 
 	bool loadData(Common::ReadStream *rs, uint32 version);

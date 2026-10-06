@@ -49,6 +49,7 @@ class GameData;
 class World;
 class ObjectManager;
 class FontManager;
+class Localization;
 class Mouse;
 class AvatarMoverProcess;
 class Texture;
@@ -77,6 +78,7 @@ private:
 
 	bool _fontOverride;
 	bool _fontAntialiasing;
+	Common::String _localizationKey; //!< settings the game fonts were set up for
 	// Audio Mixer
 	AudioMixer *_audioMixer;
 	uint32 _saveCount;
@@ -94,6 +96,7 @@ private:
 	GameData *_gameData;
 	World *_world;
 	FontManager *_fontManager;
+	Localization *_localization;
 
 	Gump *_desktopGump;
 	GameMapGump *_gameMapGump;

@@ -47,6 +47,7 @@
 #include "ultima/ultima8/gumps/shape_viewer_gump.h"
 #include "ultima/ultima8/kernel/delay_process.h"
 #include "ultima/ultima8/kernel/object_manager.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/usecode/regret_intrinsics.h"
 #include "ultima/ultima8/usecode/remorse_intrinsics.h"
 #include "ultima/ultima8/usecode/u8_intrinsics.h"
@@ -121,7 +122,7 @@ Ultima8Engine::Ultima8Engine(OSystem *syst, const Ultima::UltimaGameDescription 
 		_isRunning(false),  _gameInfo(nullptr),
 		_configFileMan(nullptr), _saveCount(0), _game(nullptr), _lastError(Common::kNoError),
 		_kernel(nullptr), _objectManager(nullptr), _mouse(nullptr), _ucMachine(nullptr),
-		_screen(nullptr), _fontManager(nullptr), _paletteManager(nullptr), _gameData(nullptr),
+		_screen(nullptr), _fontManager(nullptr), _localization(nullptr), _paletteManager(nullptr), _gameData(nullptr),
 		_world(nullptr), _desktopGump(nullptr), _gameMapGump(nullptr), _avatarMoverProcess(nullptr),
 		_frameSkip(false), _frameLimit(true), _interpolate(true), _animationRate(100),
 		_avatarInStasis(false), _cruStasis(false), _showEditorItems(false), _inversion(0),
@@ -142,6 +143,7 @@ Ultima8Engine::~Ultima8Engine() {
 	delete _mouse;
 	delete _gameData;
 	delete _world;
+	delete _localization;
 	delete _fontManager;
 	delete _screen;
 	delete _configFileMan;
@@ -186,6 +188,7 @@ Common::Error Ultima8Engine::initialize() {
 	_gameInfo = nullptr;
 	_configFileMan = new ConfigFileManager();
 	_fontManager = new FontManager();
+	_localization = new Localization();
 	_kernel = new Kernel();
 
 	//!! move this elsewhere
@@ -1429,9 +1432,18 @@ void Ultima8Engine::applyGameSettings() {
 	bool fontOverride = ConfMan.getBool("font_override");
 	bool fontAntialiasing = ConfMan.getBool("font_antialiasing");
 
-	if (_fontOverride != fontOverride || _fontAntialiasing != fontAntialiasing) {
+	const GameInfo *info = getGameInfo();
+	_localization->configure(info && info->_type == GameInfo::GAME_U8 &&
+	                         info->_language == GameInfo::GAMELANG_ENGLISH);
+	// The CJK font replaces the game fonts while localized; when that
+	// changes, start again from the original fonts.
+	Common::String localizationKey = _localization->wantsCJKFont() ? _localization->language() : "";
+
+	if (_fontOverride != fontOverride || _fontAntialiasing != fontAntialiasing ||
+	        _localizationKey != localizationKey) {
 		_fontOverride = fontOverride;
 		_fontAntialiasing = fontAntialiasing;
+		_localizationKey = localizationKey;
 
 		_fontManager->resetGameFonts();
 

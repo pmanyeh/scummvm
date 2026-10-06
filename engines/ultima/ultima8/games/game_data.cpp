@@ -36,6 +36,7 @@
 #include "ultima/ultima8/gfx/shape.h"
 #include "ultima/ultima8/gfx/wpn_ovlay_dat.h"
 #include "ultima/ultima8/gumps/weasel_dat.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/misc/util.h"
 #include "ultima/ultima8/usecode/usecode_flex.h"
 #include "ultima/ultima8/world/actors/combat_dat.h"
@@ -359,7 +360,12 @@ void GameData::loadU8Data() {
 
 void GameData::setupFontOverrides() {
 	setupTTFOverrides("game", false);
-	setupCJKOverrides();
+
+	// Translated text is UTF-8 and needs the CJK font; without it the
+	// localization stays off and the English text is shown.
+	Localization *l10n = Localization::get_instance();
+	if (l10n && l10n->wantsCJKFont())
+		l10n->setCJKFontReady(setupCJKOverrides());
 
 	if (_gameInfo->_language == GameInfo::GAMELANG_JAPANESE)
 		setupJPOverrides();
@@ -393,20 +399,23 @@ void GameData::setupJPOverrides() {
 	setupTTFOverrides("language", true);
 }
 
-// Replace the TTF overrides with a UTF-8 capable CJK font when one is
-// configured (font_cjk_file). Colours and borders come from the standard
-// [fontoverride] section.
-void GameData::setupCJKOverrides() {
-	if (!ConfMan.hasKey("font_cjk_file") || ConfMan.get("font_cjk_file").empty())
-		return;
-
-	const Common::Path filename(ConfMan.get("font_cjk_file"));
+// Replace the game fonts listed in the [fontoverride] section with a UTF-8
+// capable CJK font (font_cjk_file), keeping their colours and borders.
+// Returns false, with the previous overrides restored, unless every listed
+// font could be replaced.
+bool GameData::setupCJKOverrides() {
+	Common::String file = ConfMan.hasKey("font_cjk_file") ? ConfMan.get("font_cjk_file") : "";
+	if (file.empty())
+		file = "Cubic_11.ttf";
+	const Common::Path filename(file);
 	int pointsize = ConfMan.hasKey("font_cjk_size") ? ConfMan.getInt("font_cjk_size") : 12;
 	bool antialiasing = ConfMan.hasKey("font_cjk_antialiasing") && ConfMan.getBool("font_cjk_antialiasing");
 
 	ConfigFileManager *config = ConfigFileManager::get_instance();
 	FontManager *fontmanager = FontManager::get_instance();
 	KeyMap ttfkeyvals = config->listKeyValues("game", "fontoverride");
+	Common::Array<int> replaced;
+	bool ok = true;
 	for (const auto &i : ttfkeyvals) {
 		int fontnum = atoi(i._key.c_str());
 
@@ -414,15 +423,27 @@ void GameData::setupCJKOverrides() {
 		SplitString(i._value, ',', vals);
 		if (vals.size() != 4) {
 			warning("Invalid ttf override: %s", i._value.c_str());
-			continue;
+			ok = false;
+			break;
 		}
 
 		uint32 col32 = strtol(vals[2].c_str(), 0, 0);
 		int border = atoi(vals[3].c_str());
 		if (!fontmanager->addCJKOverride(fontnum, filename, pointsize, col32, border, antialiasing)) {
 			warning("failed to setup CJK font %s for font %d", filename.toString().c_str(), fontnum);
+			ok = false;
+			break;
 		}
+		replaced.push_back(fontnum);
 	}
+
+	if (ok && !replaced.empty())
+		return true;
+
+	for (int fontnum : replaced)
+		fontmanager->removeOverride(fontnum);
+	setupTTFOverrides("game", false);
+	return false;
 }
 
 void GameData::setupTTFOverrides(const char *category, bool SJIS) {

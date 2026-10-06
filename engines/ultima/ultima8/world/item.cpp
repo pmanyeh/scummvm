@@ -39,6 +39,7 @@
 #include "ultima/ultima8/world/coord_utils.h"
 #include "ultima/ultima8/world/fire_type.h"
 #include "ultima/ultima8/misc/direction_util.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/gumps/bark_gump.h"
 #include "ultima/ultima8/gumps/ask_gump.h"
 #include "ultima/ultima8/world/actors/actor_bark_notify_process.h"
@@ -3069,6 +3070,13 @@ uint32 Item::I_bark(const uint8 *args, unsigned int /*argsize*/) {
 		return 0;
 	}
 
+	// Localization: identify this bark and look up its translation (see the
+	// Localization debug channel). The translation is not displayed yet;
+	// str stays the game string used for speech, timing and saves.
+	Localization *l10n = Localization::get_instance();
+	if (l10n && l10n->isActive())
+		l10n->translateBark(str);
+
 	return item->bark(str);
 }
 
@@ -3155,6 +3163,15 @@ uint32 Item::I_ask(const uint8 *args, unsigned int /*argsize*/) {
 	Actor *actor = getMainActor();
 	if (actor)
 		actor->closeBark();
+
+	// Localization: answers are identified by the asking class and their
+	// English text. Looked up only; the answer list is never changed.
+	Localization *l10n = Localization::get_instance();
+	if (l10n && l10n->isActive()) {
+		uint16 classId = Localization::runningClassId();
+		for (unsigned int i = 0; i < answers->getSize(); ++i)
+			l10n->translateAnswer(classId, UCMachine::get_instance()->getString(answers->getStringIndex(i)));
+	}
 
 	// Use AskGump
 	Gump *_gump = new AskGump(1, answers);

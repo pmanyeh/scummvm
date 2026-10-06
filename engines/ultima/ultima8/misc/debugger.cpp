@@ -43,6 +43,7 @@
 #include "ultima/ultima8/kernel/kernel.h"
 #include "ultima/ultima8/kernel/object_manager.h"
 #include "ultima/ultima8/misc/id_man.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/ultima8.h"
 #include "ultima/ultima8/usecode/bit_set.h"
 #include "ultima/ultima8/usecode/uc_machine.h"
@@ -78,6 +79,7 @@ Debugger::Debugger() : GUI::Debugger() {
 	registerCmd("Ultima8Engine::toggleShowTouchingItems", WRAP_METHOD(Debugger, cmdShowTouchingItems));
 	registerCmd("Ultima8Engine::closeItemGumps", WRAP_METHOD(Debugger, cmdCloseItemGumps));
 	registerCmd("Ultima8Engine::barkTestFile", WRAP_METHOD(Debugger, cmdBarkTestFile));
+	registerCmd("Localization::info", WRAP_METHOD(Debugger, cmdLocalizationInfo));
 
 	registerCmd("CameraProcess::moveToAvatar", WRAP_METHOD(Debugger, cmdCameraOnAvatar));
 
@@ -327,6 +329,16 @@ bool Debugger::cmdBarkTestFile(int argc, const char **argv) {
 	}
 
 	debugPrintf("%s has only %d text lines\n", argv[1], n);
+	return true;
+}
+
+bool Debugger::cmdLocalizationInfo(int argc, const char **argv) {
+	Localization *l10n = Localization::get_instance();
+	if (!l10n) {
+		debugPrintf("Localization not available\n");
+		return true;
+	}
+	debugPrintf("%s", l10n->dumpInfo().c_str());
 	return true;
 }
 

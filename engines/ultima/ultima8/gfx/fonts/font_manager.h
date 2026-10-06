@@ -115,6 +115,11 @@ public:
 	                    int pointsize, uint32 rgb, int bordersize,
 	                    bool antialiasing);
 
+	//! remove the override of a game font
+	void removeOverride(unsigned int fontnum) {
+		setOverride(fontnum, nullptr);
+	}
+
 	//! override a game font with a Japanese font.
 	//! \param fontnum the font to override
 	//! \param jpfont the fontnum of the Japanese font to use
