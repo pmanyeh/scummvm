@@ -137,9 +137,11 @@ public:
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0633", "Hello there, Avatar. ", t),
 		                 TranslationCatalog::kSourceMismatch);
 		TS_ASSERT(t == nullptr);
+		// an answer the catalog does not have is a miss, not a mismatch
+		TS_ASSERT_EQUALS(cat.lookup("ask 0402", "Hello, Devon. ", t), TranslationCatalog::kMiss);
 		// comparison is exact: case and trailing space matter, as in usecode
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0633", "Hello there.", t), TranslationCatalog::kSourceMismatch);
-		TS_ASSERT_EQUALS(cat.lookup("ask 0402", "who are you? ", t), TranslationCatalog::kSourceMismatch);
+		TS_ASSERT_EQUALS(cat.lookup("ask 0402", "who are you? ", t), TranslationCatalog::kMiss);
 	}
 
 	void test_several_sources_per_bark() {

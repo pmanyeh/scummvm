@@ -65,7 +65,7 @@ TranslationCatalog::TranslationCatalog() : _skipped(0) {
 
 void TranslationCatalog::clear() {
 	_entries.clear();
-	_contexts.clear();
+	_barkContexts.clear();
 	_skipped = 0;
 	_language.clear();
 }
@@ -186,7 +186,10 @@ void TranslationCatalog::addEntry(const Common::String &key, const Common::Strin
 	}
 
 	_entries[fullKey] = translation;
-	_contexts[context] = true;
+	// An answer is identified by its text, so a different text is simply
+	// another answer; only a bark call site can show unexpected text.
+	if (context.hasPrefix("bark "))
+		_barkContexts[context] = true;
 }
 
 bool TranslationCatalog::load(Common::SeekableReadStream &rs, const Common::String &name) {
@@ -283,7 +286,7 @@ TranslationCatalog::Result TranslationCatalog::lookup(const Common::String &cont
 		translation = &it->_value;
 		return kHit;
 	}
-	return _contexts.contains(context) ? kSourceMismatch : kMiss;
+	return _barkContexts.contains(context) ? kSourceMismatch : kMiss;
 }
 
 } // End of namespace Ultima8

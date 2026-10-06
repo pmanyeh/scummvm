@@ -47,9 +47,9 @@ namespace Ultima8 {
 class TranslationCatalog {
 public:
 	enum Result {
-		kMiss,           //!< no entry for this context
+		kMiss,           //!< no entry (for an answer: no entry for this text)
 		kHit,            //!< translation found
-		kSourceMismatch  //!< context known, but not with this English text
+		kSourceMismatch  //!< bark call site known, but not with this English text
 	};
 
 	TranslationCatalog();
@@ -91,7 +91,7 @@ private:
 	void parseHeader(const Common::String &header);
 
 	EntryMap _entries;     //!< "<context>\x04<English>" -> translation
-	ContextSet _contexts;  //!< contexts with at least one entry
+	ContextSet _barkContexts;  //!< bark call sites with at least one entry
 	uint _skipped;
 	Common::String _language;
 };
