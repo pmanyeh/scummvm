@@ -21,6 +21,7 @@
 
 #include "common/keyboard.h"
 #include "ultima/ultima8/gumps/book_gump.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/gumps/widgets/text_widget.h"
 #include "ultima/ultima8/games/game_data.h"
 #include "ultima/ultima8/gfx/gump_shape_archive.h"
@@ -35,12 +36,12 @@ namespace Ultima8 {
 DEFINE_RUNTIME_CLASSTYPE_CODE(BookGump)
 
 BookGump::BookGump()
-	: ModalGump(), _textWidgetL(0), _textWidgetR(0) {
+	: ModalGump(), _localized(false), _textWidgetL(0), _textWidgetR(0) {
 
 }
 
-BookGump::BookGump(ObjId owner, const Common::String &msg) :
-	ModalGump(0, 0, 100, 100, owner), _text(msg),
+BookGump::BookGump(ObjId owner, const Common::String &msg, bool localized) :
+	ModalGump(0, 0, 100, 100, owner), _text(msg), _localized(localized),
 	_textWidgetL(0), _textWidgetR(0) {
 }
 
@@ -58,7 +59,7 @@ void BookGump::InitGump(Gump *newparent, bool take_focus) {
 	// Original book text is in the config as "translations" for "spell of resurrection".
 	//
 	Item *item = getItem(_owner);
-	if (item && item->getShape() == 0x120 && item->getQuality() == 0x66) {
+	if (!_localized && item && item->getShape() == 0x120 && item->getQuality() == 0x66) {
 		const Common::String placeholder = "spell of resurrection";
 		const Common::String replacement = _TL_(placeholder);
 		if (replacement != placeholder)
@@ -126,7 +127,13 @@ uint32 BookGump::I_readBook(const uint8 *args, unsigned int /*argsize*/) {
 	ARG_STRING(str);
 	assert(item);
 
-	Gump *gump = new BookGump(item->getObjId(), str);
+	// Localization: the translation is only shown (books are not saved)
+	Common::String text = str;
+	Localization *l10n = Localization::get_instance();
+	if (l10n)
+		text = l10n->translateCallSite("book", str, 9);
+
+	Gump *gump = new BookGump(item->getObjId(), text, text != str);
 	gump->InitGump(0);
 	gump->setRelativePosition(CENTER);
 

@@ -39,6 +39,9 @@ namespace Ultima8 {
  * file. Every entry has a context that identifies where the text is shown:
  *
  *   bark CCCC:IIII   NPC speech: usecode class and IP of the bark intrinsic call
+ *   book CCCC:IIII   book / scroll / gravestone / plaque text: class and IP of
+ *   scroll, grave,   the Book::read, Scroll::read, Grave::read or Plaque::read
+ *   plaque CCCC:IIII call
  *   ask CCCC         conversation answer: usecode class that called ask
  *   param CCCC:NAME  value of a sentence parameter (NAME = varXX or call_XXXX)
  *   ui               engine text (menus, labels), identified by its English text
@@ -92,6 +95,8 @@ public:
 	const Common::String &language() const { return _language; }
 
 	static Common::String barkContext(uint16 classId, uint16 ip);
+	//! Context of a call site: kind is bark, book, scroll, grave or plaque
+	static Common::String callSiteContext(const char *kind, uint16 classId, uint16 ip);
 	static Common::String askContext(uint16 classId);
 
 	//! Parse a context and write it in canonical form ("bark 0402:0633")
@@ -138,7 +143,7 @@ private:
 	                    Common::String &translation) const;
 
 	EntryMap _entries;     //!< "<context>\x04<English>" -> translation
-	ContextSet _barkContexts;  //!< bark call sites with at least one entry
+	ContextSet _barkContexts;  //!< call sites (bark, book, ...) with at least one entry
 	TemplateMap _templates;    //!< bark call site -> its sentence templates
 	uint _skipped;
 	Common::String _language;

@@ -20,6 +20,7 @@
  */
 
 #include "ultima/ultima8/gumps/readable_gump.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/gumps/widgets/text_widget.h"
 #include "ultima/ultima8/games/game_data.h"
 #include "ultima/ultima8/gfx/gump_shape_archive.h"
@@ -97,13 +98,22 @@ bool ReadableGump::OnKeyDown(int key, int mod) {
 }
 
 
+// The engraving stays English; a translation is shown below it
+static Common::String readableSubtitle(const char *kind, const Common::String &text) {
+	Localization *l10n = Localization::get_instance();
+	if (!l10n)
+		return Common::String();
+	Common::String subtitle = l10n->translateCallSite(kind, text, jpsub_font);
+	return subtitle == text ? Common::String() : subtitle;
+}
+
 uint32 ReadableGump::I_readGrave(const uint8 *args, unsigned int /*argsize*/) {
 	ARG_ITEM_FROM_PTR(item);
 	ARG_UINT16(shape);
 	ARG_STRING(str);
 	assert(item);
 
-	Gump *gump = new ReadableGump(item->getObjId(), shape, 11, str);
+	Gump *gump = new ReadableGump(item->getObjId(), shape, 11, str, readableSubtitle("grave", str));
 	gump->InitGump(0);
 	gump->setRelativePosition(CENTER);
 
@@ -116,7 +126,7 @@ uint32 ReadableGump::I_readPlaque(const uint8 *args, unsigned int /*argsize*/) {
 	ARG_STRING(str);
 	assert(item);
 
-	Gump *gump = new ReadableGump(item->getObjId(), shape, 10, str);
+	Gump *gump = new ReadableGump(item->getObjId(), shape, 10, str, readableSubtitle("plaque", str));
 	gump->InitGump(0);
 	gump->setRelativePosition(CENTER);
 

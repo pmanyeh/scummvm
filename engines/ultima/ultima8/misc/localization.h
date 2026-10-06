@@ -74,6 +74,12 @@ public:
 
 	//! Display text for a bark; must be called from the bark intrinsic
 	Common::String translateBark(const Common::String &source) const;
+
+	/**
+	 * Display text of a book, scroll, gravestone or plaque; must be called
+	 * from its intrinsic. English if the given game font cannot draw UTF-8.
+	 */
+	Common::String translateCallSite(const char *kind, const Common::String &source, int fontnum) const;
 	//! Display text for a conversation answer
 	Common::String translateAnswer(uint16 classId, const Common::String &source) const;
 

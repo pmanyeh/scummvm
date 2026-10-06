@@ -76,6 +76,10 @@ Common::String TranslationCatalog::barkContext(uint16 classId, uint16 ip) {
 	return Common::String::format("bark %04X:%04X", classId, ip);
 }
 
+Common::String TranslationCatalog::callSiteContext(const char *kind, uint16 classId, uint16 ip) {
+	return Common::String::format("%s %04X:%04X", kind, classId, ip);
+}
+
 Common::String TranslationCatalog::askContext(uint16 classId) {
 	return Common::String::format("ask %04X", classId);
 }
@@ -95,14 +99,18 @@ bool TranslationCatalog::canonicalContext(const Common::String &context, Common:
 		canonical = context;
 		return true;
 	}
-	if (context.hasPrefix("bark ")) {
-		Common::String id = context.substr(5);
+	static const char *const callSiteKinds[] = { "bark", "book", "scroll", "grave", "plaque" };
+	for (const char *kind : callSiteKinds) {
+		Common::String prefix = Common::String(kind) + " ";
+		if (!context.hasPrefix(prefix.c_str()))
+			continue;
+		Common::String id = context.substr(prefix.size());
 		size_t colon = id.findFirstOf(':');
 		if (colon == Common::String::npos ||
 		        !parseHex(id.substr(0, colon), classId) ||
 		        !parseHex(id.substr(colon + 1), ip))
 			return false;
-		canonical = barkContext(classId, ip);
+		canonical = callSiteContext(kind, classId, ip);
 		return true;
 	}
 	if (context.hasPrefix("ask ")) {
@@ -337,8 +345,8 @@ void TranslationCatalog::addEntry(const Common::String &key, const Common::Strin
 		_templates[context].push_back(t);
 	}
 	// An answer is identified by its text, so a different text is simply
-	// another answer; only a bark call site can show unexpected text.
-	if (context.hasPrefix("bark "))
+	// another answer; only a call site can show unexpected text.
+	if (!context.hasPrefix("ask ") && !context.hasPrefix("param ") && context != "ui")
 		_barkContexts[context] = true;
 }
 

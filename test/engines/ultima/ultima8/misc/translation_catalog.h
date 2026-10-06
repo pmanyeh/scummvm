@@ -103,6 +103,14 @@ public:
 		TS_ASSERT(!TranslationCatalog::canonicalContext("param 040A:name", c));
 		TS_ASSERT(!TranslationCatalog::canonicalContext("param 040A", c));
 		TS_ASSERT(!TranslationCatalog::canonicalContext("talk 0402", c));
+		TS_ASSERT(TranslationCatalog::canonicalContext("book 25f:46d", c));
+		TS_ASSERT_EQUALS(c, "book 025F:046D");
+		TS_ASSERT(TranslationCatalog::canonicalContext("scroll 0579:0168", c));
+		TS_ASSERT(TranslationCatalog::canonicalContext("grave 00C5:0118", c));
+		TS_ASSERT(TranslationCatalog::canonicalContext("plaque 0257:0109", c));
+		TS_ASSERT_EQUALS(c, "plaque 0257:0109");
+		TS_ASSERT(!TranslationCatalog::canonicalContext("book 025F", c));
+		TS_ASSERT_EQUALS(TranslationCatalog::callSiteContext("grave", 0xC5, 0x118), "grave 00C5:0118");
 		TS_ASSERT(TranslationCatalog::canonicalContext("ui", c));
 		TS_ASSERT_EQUALS(c, "ui");
 		TS_ASSERT(!TranslationCatalog::canonicalContext("ui 1", c));
@@ -253,6 +261,22 @@ public:
 		// templates are per call site
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0965", "Glad to see you, Pman.", t), TranslationCatalog::kMiss);
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0999", "Bye Pman.", t), TranslationCatalog::kMiss);
+	}
+
+	void test_readers() {
+		Common::Array<MOEntry> e;
+		e.push_back(MOEntry(key("grave 00C5:0118", "SIVLE*THE MINSTREL*WANDERS NO MORE"), "X"));
+		e.push_back(MOEntry(key("book 025F:046D", "Journal"), "Y"));
+		TranslationCatalog cat;
+		TS_ASSERT(loadMO(cat, buildMO(e)));
+		Common::String t;
+		TS_ASSERT_EQUALS(cat.lookup("grave 00C5:0118", "SIVLE*THE MINSTREL*WANDERS NO MORE", t),
+		                 TranslationCatalog::kHit);
+		TS_ASSERT_EQUALS(t, "X");
+		// a call site showing other text than the catalog knows
+		TS_ASSERT_EQUALS(cat.lookup("book 025F:046D", "Other text", t), TranslationCatalog::kSourceMismatch);
+		// kinds are separate: the same id as a bark is unknown
+		TS_ASSERT_EQUALS(cat.lookup("bark 025F:046D", "Journal", t), TranslationCatalog::kMiss);
 	}
 
 	void test_lowercase_hex_in_file() {

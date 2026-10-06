@@ -42,6 +42,9 @@
 #include "ultima/ultima8/gumps/shape_viewer_gump.h"
 #include "ultima/ultima8/kernel/kernel.h"
 #include "ultima/ultima8/kernel/object_manager.h"
+#include "ultima/ultima8/gumps/book_gump.h"
+#include "ultima/ultima8/gumps/scroll_gump.h"
+#include "ultima/ultima8/gumps/readable_gump.h"
 #include "ultima/ultima8/misc/id_man.h"
 #include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/ultima8.h"
@@ -83,6 +86,7 @@ Debugger::Debugger() : GUI::Debugger() {
 	registerCmd("Localization::info", WRAP_METHOD(Debugger, cmdLocalizationInfo));
 	registerCmd("Localization::bark", WRAP_METHOD(Debugger, cmdLocalizationBark));
 	registerCmd("Localization::gravestone", WRAP_METHOD(Debugger, cmdLocalizationGravestone));
+	registerCmd("Localization::read", WRAP_METHOD(Debugger, cmdLocalizationRead));
 
 	registerCmd("CameraProcess::moveToAvatar", WRAP_METHOD(Debugger, cmdCameraOnAvatar));
 
@@ -381,6 +385,45 @@ bool Debugger::cmdLocalizationGravestone(int argc, const char **argv) {
 	}
 	// Only the gravestone of the death screen, the avatar does not die
 	AvatarDeathProcess::showGravestone();
+	return false;
+}
+
+bool Debugger::cmdLocalizationRead(int argc, const char **argv) {
+	if (argc != 3) {
+		debugPrintf("Usage: %s book|scroll|grave|plaque <class>:<ip>\n", argv[0]);
+		debugPrintf("Shows a catalog entry the way the game would (to check translations\n");
+		debugPrintf("without going to the item).\n");
+		return true;
+	}
+
+	Localization *l10n = Localization::get_instance();
+	if (!l10n || !l10n->isActive()) {
+		debugPrintf("Localization is not active\n");
+		return true;
+	}
+
+	Common::String kind = argv[1];
+	Common::String source, translation;
+	if (!l10n->catalog().findContext(kind + " " + argv[2], source, translation)) {
+		debugPrintf("No catalog entry for %s %s\n", argv[1], argv[2]);
+		return true;
+	}
+
+	Gump *gump;
+	if (kind == "book")
+		gump = new BookGump(kMainActorId, translation, true);
+	else if (kind == "scroll")
+		gump = new ScrollGump(kMainActorId, translation);
+	else if (kind == "grave")
+		gump = new ReadableGump(kMainActorId, 27, 11, source, translation);
+	else if (kind == "plaque")
+		gump = new ReadableGump(kMainActorId, 16, 10, source, translation);
+	else {
+		debugPrintf("Unknown kind %s\n", argv[1]);
+		return true;
+	}
+	gump->InitGump(0);
+	gump->setRelativePosition(Gump::CENTER);
 	return false;
 }
 

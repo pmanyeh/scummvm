@@ -152,6 +152,25 @@ Common::String Localization::translateBark(const Common::String &source) const {
 	return translate(TranslationCatalog::barkContext(proc->getClassId(), proc->getIp()), source);
 }
 
+Common::String Localization::translateCallSite(const char *kind, const Common::String &source,
+                                               int fontnum) const {
+	if (!isActive())
+		return source;
+	UCProcess *proc = dynamic_cast<UCProcess *>(Kernel::get_instance()->getRunningProcess());
+	if (!proc)
+		return source;
+	Common::String translation = translate(
+		TranslationCatalog::callSiteContext(kind, proc->getClassId(), proc->getIp()), source);
+	if (translation != source) {
+		Font *font = FontManager::get_instance()->getGameFont(fontnum, true);
+		if (!font || !font->isUTF8()) {
+			warning("[U8-L10N] font %d cannot show localized text, showing English", fontnum);
+			return source;
+		}
+	}
+	return translation;
+}
+
 Common::String Localization::translateAnswer(uint16 classId, const Common::String &source) const {
 	return translate(TranslationCatalog::askContext(classId), source);
 }

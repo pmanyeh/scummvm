@@ -21,6 +21,7 @@
 
 #include "common/keyboard.h"
 #include "ultima/ultima8/gumps/scroll_gump.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/gumps/widgets/text_widget.h"
 #include "ultima/ultima8/games/game_data.h"
 #include "ultima/ultima8/gfx/gump_shape_archive.h"
@@ -101,7 +102,13 @@ uint32 ScrollGump::I_readScroll(const uint8 *args, unsigned int /*argsize*/) {
 	ARG_STRING(str);
 	assert(item);
 
-	Gump *gump = new ScrollGump(item->getObjId(), str);
+	// Localization: the translation is only shown (scrolls are not saved)
+	Common::String text = str;
+	Localization *l10n = Localization::get_instance();
+	if (l10n)
+		text = l10n->translateCallSite("scroll", str, 9);
+
+	Gump *gump = new ScrollGump(item->getObjId(), text);
 	gump->InitGump(0);
 	gump->setRelativePosition(CENTER);
 

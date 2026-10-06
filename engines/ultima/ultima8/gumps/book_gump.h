@@ -35,13 +35,15 @@ namespace Ultima8 {
 */
 class BookGump : public ModalGump {
 	Common::String _text;
+	bool _localized;
 	ObjId _textWidgetL;
 	ObjId _textWidgetR;
 public:
 	ENABLE_RUNTIME_CLASSTYPE()
 
 	BookGump();
-	BookGump(ObjId owner, const Common::String &msg);
+	//! \param localized msg is a translation: skip the English text fix
+	BookGump(ObjId owner, const Common::String &msg, bool localized = false);
 	~BookGump() override;
 
 	// Go to the next page on mouse click
