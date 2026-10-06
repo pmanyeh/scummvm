@@ -19,6 +19,7 @@
  *
  */
 
+#include "common/algorithm.h"
 #include "common/array.h"
 #include "common/debug.h"
 #include "common/endian.h"
@@ -65,6 +66,7 @@ TranslationCatalog::TranslationCatalog() : _skipped(0) {
 
 void TranslationCatalog::clear() {
 	_entries.clear();
+	_templates.clear();
 	_barkContexts.clear();
 	_skipped = 0;
 	_language.clear();
@@ -76,6 +78,15 @@ Common::String TranslationCatalog::barkContext(uint16 classId, uint16 ip) {
 
 Common::String TranslationCatalog::askContext(uint16 classId) {
 	return Common::String::format("ask %04X", classId);
+}
+
+Common::String TranslationCatalog::canonicalParam(const Common::String &name) {
+	uint16 value = 0;
+	if (name.hasPrefix("var") && name.size() <= 5 && parseHex(name.substr(3), value) && value <= 0xFF)
+		return Common::String::format("var%02X", value);
+	if (name.hasPrefix("call_") && parseHex(name.substr(5), value))
+		return Common::String::format("call_%04X", value);
+	return Common::String();
 }
 
 bool TranslationCatalog::canonicalContext(const Common::String &context, Common::String &canonical) {
@@ -96,7 +107,119 @@ bool TranslationCatalog::canonicalContext(const Common::String &context, Common:
 		canonical = askContext(classId);
 		return true;
 	}
+	if (context.hasPrefix("param ")) {
+		Common::String id = context.substr(6);
+		size_t colon = id.findFirstOf(':');
+		if (colon == Common::String::npos || !parseHex(id.substr(0, colon), classId))
+			return false;
+		Common::String param = canonicalParam(id.substr(colon + 1));
+		if (param.empty())
+			return false;
+		canonical = Common::String::format("param %04X:%s", classId, param.c_str());
+		return true;
+	}
 	return false;
+}
+
+bool TranslationCatalog::placeholders(const Common::String &text, Common::Array<Common::String> &names) {
+	names.clear();
+	size_t pos = 0;
+	while ((pos = text.findFirstOf("{}", pos)) != Common::String::npos) {
+		if (text[pos] == '}')
+			return false;
+		size_t end = text.findFirstOf('}', pos);
+		if (end == Common::String::npos)
+			return false;
+		Common::String name = text.substr(pos + 1, end - pos - 1);
+		if (name != "name" && name != "num" && canonicalParam(name) != name)
+			return false;
+		names.push_back(name);
+		pos = end + 1;
+	}
+	return true;
+}
+
+namespace {
+
+// A template split into literal text and placeholders
+struct TemplatePart {
+	bool _placeholder;
+	Common::String _text;
+};
+
+void splitTemplate(const Common::String &tmpl, Common::Array<TemplatePart> &parts) {
+	size_t pos = 0;
+	while (pos < tmpl.size()) {
+		size_t open = tmpl.findFirstOf('{', pos);
+		if (open == Common::String::npos)
+			open = tmpl.size();
+		if (open > pos) {
+			TemplatePart literal = { false, tmpl.substr(pos, open - pos) };
+			parts.push_back(literal);
+		}
+		if (open == tmpl.size())
+			break;
+		size_t close = tmpl.findFirstOf('}', open);
+		TemplatePart placeholder = { true, tmpl.substr(open + 1, close - open - 1) };
+		parts.push_back(placeholder);
+		pos = close + 1;
+	}
+}
+
+bool matchParts(const Common::Array<TemplatePart> &parts, uint index, const Common::String &text,
+                uint pos, Common::Array<Common::String> &values) {
+	if (index == parts.size())
+		return pos == text.size();
+
+	const TemplatePart &part = parts[index];
+	if (!part._placeholder) {
+		if (text.size() - pos < part._text.size() ||
+		        strncmp(text.c_str() + pos, part._text.c_str(), part._text.size()) != 0)
+			return false;
+		return matchParts(parts, index + 1, text, pos + part._text.size(), values);
+	}
+
+	// A placeholder matches at least one character; try the shortest first
+	for (uint end = pos + 1; end <= text.size(); end++) {
+		values.push_back(text.substr(pos, end - pos));
+		if (matchParts(parts, index + 1, text, end, values))
+			return true;
+		values.pop_back();
+	}
+	return false;
+}
+
+} // End of anonymous namespace
+
+bool TranslationCatalog::matchTemplate(const Common::String &tmpl, const Common::String &text,
+                                       Common::Array<Common::String> &values) {
+	Common::Array<Common::String> names;
+	if (!placeholders(tmpl, names))
+		return false;
+	Common::Array<TemplatePart> parts;
+	splitTemplate(tmpl, parts);
+	values.clear();
+	return matchParts(parts, 0, text, 0, values);
+}
+
+Common::String TranslationCatalog::fillTemplate(const Common::String &tmpl,
+		const Common::Array<Common::String> &names, const Common::Array<Common::String> &values) {
+	Common::Array<TemplatePart> parts;
+	splitTemplate(tmpl, parts);
+	Common::String out;
+	for (const auto &part : parts) {
+		if (!part._placeholder) {
+			out += part._text;
+			continue;
+		}
+		for (uint i = 0; i < names.size() && i < values.size(); i++) {
+			if (names[i] == part._text) {
+				out += values[i];
+				break;
+			}
+		}
+	}
+	return out;
 }
 
 // Same rules as the UTF-8 font decoding: anything it would draw with the
@@ -185,7 +308,30 @@ void TranslationCatalog::addEntry(const Common::String &key, const Common::Strin
 		return;
 	}
 
+	// A sentence template: the translation must use the same placeholders
+	Common::Array<Common::String> sourceNames, translationNames;
+	bool isTemplate = context.hasPrefix("bark ") && source.contains('{');
+	if (isTemplate) {
+		bool ok = placeholders(source, sourceNames) && placeholders(translation, translationNames);
+		for (uint i = 0; ok && i < sourceNames.size(); i++)
+			ok = Common::find(translationNames.begin(), translationNames.end(), sourceNames[i]) != translationNames.end();
+		for (uint i = 0; ok && i < translationNames.size(); i++)
+			ok = Common::find(sourceNames.begin(), sourceNames.end(), translationNames[i]) != sourceNames.end();
+		if (!ok) {
+			warning("[U8-L10N] %s: %s: placeholders of translation and source differ, skipped",
+			        name.c_str(), context.c_str());
+			_skipped++;
+			return;
+		}
+	}
+
 	_entries[fullKey] = translation;
+	if (isTemplate) {
+		Template t;
+		t._source = source;
+		t._translation = translation;
+		_templates[context].push_back(t);
+	}
 	// An answer is identified by its text, so a different text is simply
 	// another answer; only a bark call site can show unexpected text.
 	if (context.hasPrefix("bark "))
@@ -290,18 +436,49 @@ bool TranslationCatalog::findContext(const Common::String &context, Common::Stri
 	return false;
 }
 
-TranslationCatalog::Result TranslationCatalog::lookup(const Common::String &context,
-		const Common::String &source, const Common::String *&translation) const {
-	translation = nullptr;
+bool TranslationCatalog::lookupTemplate(const Common::String &context, const Common::String &source,
+                                        Common::String &translation) const {
+	TemplateMap::const_iterator t = _templates.find(context);
+	if (t == _templates.end())
+		return false;
 
+	// Parameters belong to the class of the bark ("bark CCCC:IIII")
+	Common::String paramPrefix = "param " + context.substr(5, 4) + ":";
+
+	for (const Template &tmpl : t->_value) {
+		Common::Array<Common::String> names, values;
+		if (!matchTemplate(tmpl._source, source, values))
+			continue;
+		placeholders(tmpl._source, names);
+
+		for (uint i = 0; i < names.size(); i++) {
+			if (!names[i].hasPrefix("var") && !names[i].hasPrefix("call_"))
+				continue;
+			Common::String key = paramPrefix + names[i];
+			key += CONTEXT_SEPARATOR;
+			key += values[i];
+			EntryMap::const_iterator p = _entries.find(key);
+			if (p != _entries.end())
+				values[i] = p->_value;
+		}
+		translation = fillTemplate(tmpl._translation, names, values);
+		return true;
+	}
+	return false;
+}
+
+TranslationCatalog::Result TranslationCatalog::lookup(const Common::String &context,
+		const Common::String &source, Common::String &translation) const {
 	Common::String key = context;
 	key += CONTEXT_SEPARATOR;
 	key += source;
 	EntryMap::const_iterator it = _entries.find(key);
 	if (it != _entries.end()) {
-		translation = &it->_value;
+		translation = it->_value;
 		return kHit;
 	}
+	if (lookupTemplate(context, source, translation))
+		return kHit;
 	return _barkContexts.contains(context) ? kSourceMismatch : kMiss;
 }
 

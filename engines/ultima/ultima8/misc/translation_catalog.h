@@ -22,6 +22,7 @@
 #ifndef ULTIMA8_MISC_TRANSLATION_CATALOG_H
 #define ULTIMA8_MISC_TRANSLATION_CATALOG_H
 
+#include "common/array.h"
 #include "common/hashmap.h"
 #include "common/hash-str.h"
 #include "common/str.h"
@@ -39,10 +40,22 @@ namespace Ultima8 {
  *
  *   bark CCCC:IIII   NPC speech: usecode class and IP of the bark intrinsic call
  *   ask CCCC         conversation answer: usecode class that called ask
+ *   param CCCC:NAME  value of a sentence parameter (NAME = varXX or call_XXXX)
  *
  * (hex, case-insensitive in the file). The msgid is the exact English text,
  * including trailing spaces; an entry is only used when it matches the text
  * the game is about to show.
+ *
+ * Barks that usecode builds from parts are sentence templates: the msgid
+ * contains placeholders that match any text, and the translation uses the
+ * same placeholders (in any order):
+ *
+ *   {name}       the Avatar's name (never translated)
+ *   {num}        a number
+ *   {varXX}      a usecode string variable; {call_XXXX} the result of a
+ *                usecode function. Their values are translated with the
+ *                "param CCCC:varXX" / "param CCCC:call_XXXX" entries of the
+ *                same class if there are any, and shown as they are otherwise.
  */
 class TranslationCatalog {
 public:
@@ -66,7 +79,7 @@ public:
 
 	//! Look up a translation. translation is set only on kHit.
 	Result lookup(const Common::String &context, const Common::String &source,
-	              const Common::String *&translation) const;
+	              Common::String &translation) const;
 
 	//! Any one entry of a context (for testing); false if there is none
 	bool findContext(const Common::String &context, Common::String &source,
@@ -83,19 +96,49 @@ public:
 	//! Parse a context and write it in canonical form ("bark 0402:0633")
 	static bool canonicalContext(const Common::String &context, Common::String &canonical);
 
+	//! "varf7" -> "varF7", "call_0bcf" -> "call_0BCF"; empty if not a parameter name
+	static Common::String canonicalParam(const Common::String &name);
+
 	//! True if the whole string is valid UTF-8
 	static bool isValidUTF8(const Common::String &text);
+
+	/**
+	 * Placeholders of a template, in order (without braces).
+	 * \return false if a brace does not start a known placeholder
+	 */
+	static bool placeholders(const Common::String &text, Common::Array<Common::String> &names);
+
+	/**
+	 * Match text against a template.
+	 * \param values the text matched by each placeholder, in template order
+	 */
+	static bool matchTemplate(const Common::String &tmpl, const Common::String &text,
+	                          Common::Array<Common::String> &values);
+
+	//! Replace the placeholders of tmpl by the given values
+	static Common::String fillTemplate(const Common::String &tmpl,
+	                                   const Common::Array<Common::String> &names,
+	                                   const Common::Array<Common::String> &values);
 
 private:
 	typedef Common::HashMap<Common::String, Common::String> EntryMap;
 	typedef Common::HashMap<Common::String, bool> ContextSet;
 
+	struct Template {
+		Common::String _source;
+		Common::String _translation;
+	};
+	typedef Common::HashMap<Common::String, Common::Array<Template> > TemplateMap;
+
 	void addEntry(const Common::String &key, const Common::String &translation,
 	              const Common::String &name);
 	void parseHeader(const Common::String &header);
+	bool lookupTemplate(const Common::String &context, const Common::String &source,
+	                    Common::String &translation) const;
 
 	EntryMap _entries;     //!< "<context>\x04<English>" -> translation
 	ContextSet _barkContexts;  //!< bark call sites with at least one entry
+	TemplateMap _templates;    //!< bark call site -> its sentence templates
 	uint _skipped;
 	Common::String _language;
 };

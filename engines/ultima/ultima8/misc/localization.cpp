@@ -123,11 +123,11 @@ Common::String Localization::translate(const Common::String &context,
 	if (!isActive())
 		return source;
 
-	const Common::String *translation;
+	Common::String translation;
 	switch (_catalog.lookup(context, source, translation)) {
 	case TranslationCatalog::kHit:
 		debugC(1, kDebugLocalization, "[U8-L10N] %s HIT src=\"%s\"", context.c_str(), source.c_str());
-		return *translation;
+		return translation;
 	case TranslationCatalog::kSourceMismatch:
 		debugC(1, kDebugLocalization, "[U8-L10N] %s SOURCE-MISMATCH src=\"%s\"", context.c_str(),
 		       source.c_str());

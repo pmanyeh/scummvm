@@ -96,7 +96,13 @@ public:
 		TS_ASSERT(!TranslationCatalog::canonicalContext("bark 0402:", c));
 		TS_ASSERT(!TranslationCatalog::canonicalContext("bark 0402:12345", c));
 		TS_ASSERT(!TranslationCatalog::canonicalContext("ask 04G2", c));
-		TS_ASSERT(!TranslationCatalog::canonicalContext("param 040A:varF7", c));
+		TS_ASSERT(TranslationCatalog::canonicalContext("param 40a:varf7", c));
+		TS_ASSERT_EQUALS(c, "param 040A:varF7");
+		TS_ASSERT(TranslationCatalog::canonicalContext("param 040A:call_bcf", c));
+		TS_ASSERT_EQUALS(c, "param 040A:call_0BCF");
+		TS_ASSERT(!TranslationCatalog::canonicalContext("param 040A:name", c));
+		TS_ASSERT(!TranslationCatalog::canonicalContext("param 040A", c));
+		TS_ASSERT(!TranslationCatalog::canonicalContext("talk 0402", c));
 		TS_ASSERT(!TranslationCatalog::canonicalContext("", c));
 	}
 
@@ -114,29 +120,27 @@ public:
 		TS_ASSERT_EQUALS(cat.skipped(), 0u);
 		TS_ASSERT_EQUALS(cat.language(), "zh_TW");
 
-		const Common::String *t;
+		Common::String t;
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0633", "Hello there. ", t), TranslationCatalog::kHit);
-		TS_ASSERT(t && *t == ZH_HELLO);
+		TS_ASSERT(t == ZH_HELLO);
 		TS_ASSERT_EQUALS(cat.lookup("ask 0402", "Who are you? ", t), TranslationCatalog::kHit);
-		TS_ASSERT(t && *t == ZH_WHO);
+		TS_ASSERT(t == ZH_WHO);
 		TS_ASSERT_EQUALS(cat.lookup("ask 0402", "Goodbye. ", t), TranslationCatalog::kHit);
-		TS_ASSERT(t && *t == ZH_BYE);
+		TS_ASSERT(t == ZH_BYE);
 	}
 
 	void test_miss_and_mismatch() {
 		TranslationCatalog cat;
 		TS_ASSERT(loadMO(cat, buildMO(devonEntries())));
 
-		const Common::String *t;
+		Common::String t;
 		// unknown call site
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0634", "Hello there. ", t), TranslationCatalog::kMiss);
-		TS_ASSERT(t == nullptr);
 		// unknown class asking the same question
 		TS_ASSERT_EQUALS(cat.lookup("ask 0403", "Who are you? ", t), TranslationCatalog::kMiss);
 		// known call site, different text (dynamic text or another game version)
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0633", "Hello there, Avatar. ", t),
 		                 TranslationCatalog::kSourceMismatch);
-		TS_ASSERT(t == nullptr);
 		// an answer the catalog does not have is a miss, not a mismatch
 		TS_ASSERT_EQUALS(cat.lookup("ask 0402", "Hello, Devon. ", t), TranslationCatalog::kMiss);
 		// comparison is exact: case and trailing space matter, as in usecode
@@ -151,11 +155,11 @@ public:
 		TranslationCatalog cat;
 		TS_ASSERT(loadMO(cat, buildMO(e)));
 
-		const Common::String *t;
+		Common::String t;
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:1000", "Yes. ", t), TranslationCatalog::kHit);
-		TS_ASSERT(t && *t == "A");
+		TS_ASSERT(t == "A");
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:1000", "No. ", t), TranslationCatalog::kHit);
-		TS_ASSERT(t && *t == "B");
+		TS_ASSERT(t == "B");
 	}
 
 	void test_find_context() {
@@ -170,12 +174,90 @@ public:
 		TS_ASSERT(!cat.findContext("bark 0402", source, translation));
 	}
 
+	void test_placeholders() {
+		Common::Array<Common::String> n;
+		TS_ASSERT(TranslationCatalog::placeholders("Hello there, {name}.", n));
+		TS_ASSERT_EQUALS(n.size(), 1u);
+		TS_ASSERT_EQUALS(n[0], "name");
+		TS_ASSERT(TranslationCatalog::placeholders("{varF7} and {call_0BCF} x{num}", n));
+		TS_ASSERT_EQUALS(n.size(), 3u);
+		TS_ASSERT_EQUALS(n[1], "call_0BCF");
+		TS_ASSERT(TranslationCatalog::placeholders("no placeholders", n));
+		TS_ASSERT_EQUALS(n.size(), 0u);
+		TS_ASSERT(!TranslationCatalog::placeholders("{nme}", n));
+		TS_ASSERT(!TranslationCatalog::placeholders("{name", n));
+		TS_ASSERT(!TranslationCatalog::placeholders("name}", n));
+		TS_ASSERT(!TranslationCatalog::placeholders("{varf7}", n));   // canonical hex only
+		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("varf7"), "varF7");
+		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("call_bcf"), "call_0BCF");
+		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("name"), "");
+	}
+
+	void test_match_template() {
+		Common::Array<Common::String> v;
+		TS_ASSERT(TranslationCatalog::matchTemplate("Hello there, {name}.", "Hello there, Pman.", v));
+		TS_ASSERT_EQUALS(v.size(), 1u);
+		TS_ASSERT_EQUALS(v[0], "Pman");
+		// a name containing the following literal text
+		TS_ASSERT(TranslationCatalog::matchTemplate("Bye {name}. ", "Bye Dr. Who. ", v));
+		TS_ASSERT_EQUALS(v[0], "Dr. Who");
+		TS_ASSERT(TranslationCatalog::matchTemplate("{varF7} wants {num} {call_0BCF}.",
+		                                            "stranger  wants 3 ale.", v));
+		TS_ASSERT_EQUALS(v.size(), 3u);
+		TS_ASSERT_EQUALS(v[0], "stranger ");
+		TS_ASSERT_EQUALS(v[1], "3");
+		TS_ASSERT_EQUALS(v[2], "ale");
+		TS_ASSERT(!TranslationCatalog::matchTemplate("Hello there, {name}.", "Hello there, Pman!", v));
+		TS_ASSERT(!TranslationCatalog::matchTemplate("Hello there, {name}.", "Hello there, .", v));
+		TS_ASSERT(!TranslationCatalog::matchTemplate("Hello there, {name}.", "Hi there, Pman.", v));
+
+		Common::Array<Common::String> names;
+		names.push_back("name");
+		names.push_back("num");
+		Common::Array<Common::String> values;
+		values.push_back("Pman");
+		values.push_back("2");
+		TS_ASSERT_EQUALS(TranslationCatalog::fillTemplate("{num} for {name}, {name}!", names, values),
+		                 "2 for Pman, Pman!");
+	}
+
+	void test_template_lookup() {
+		Common::Array<MOEntry> e;
+		e.push_back(MOEntry(key("bark 0402:0964", "Glad to see you, {name}."), "{name}" ZH_HELLO));
+		e.push_back(MOEntry(key("bark 040A:0100", "Greetings again {varF7}. Another {call_0BCF}?"),
+		                    "{call_0BCF}/{varF7}"));
+		e.push_back(MOEntry(key("param 040a:varf7", "stranger "), "X"));
+		// translation with a placeholder the source does not have
+		e.push_back(MOEntry(key("bark 0402:0999", "Bye {name}."), "{num}"));
+		// translation that drops a placeholder
+		e.push_back(MOEntry(key("bark 0402:0998", "Bye {name}."), "Bye."));
+		TranslationCatalog cat;
+		TS_ASSERT(loadMO(cat, buildMO(e)));
+		TS_ASSERT_EQUALS(cat.skipped(), 2u);
+
+		Common::String t;
+		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0964", "Glad to see you, Pman.", t), TranslationCatalog::kHit);
+		TS_ASSERT_EQUALS(t, "Pman" ZH_HELLO);
+		// parameter values: translated if the class has an entry, kept otherwise
+		TS_ASSERT_EQUALS(cat.lookup("bark 040A:0100", "Greetings again stranger . Another ale?", t),
+		                 TranslationCatalog::kHit);
+		TS_ASSERT_EQUALS(t, "ale/X");
+		TS_ASSERT_EQUALS(cat.lookup("bark 040A:0100", "Greetings again Pman. Another mead?", t),
+		                 TranslationCatalog::kHit);
+		TS_ASSERT_EQUALS(t, "mead/Pman");
+		// text that does not fit the template
+		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0964", "Something else.", t), TranslationCatalog::kSourceMismatch);
+		// templates are per call site
+		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0965", "Glad to see you, Pman.", t), TranslationCatalog::kMiss);
+		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0999", "Bye Pman.", t), TranslationCatalog::kMiss);
+	}
+
 	void test_lowercase_hex_in_file() {
 		Common::Array<MOEntry> e;
 		e.push_back(MOEntry(key("bark 040a:0bcf", "Ale. "), "X"));
 		TranslationCatalog cat;
 		TS_ASSERT(loadMO(cat, buildMO(e)));
-		const Common::String *t;
+		Common::String t;
 		TS_ASSERT_EQUALS(cat.lookup("bark 040A:0BCF", "Ale. ", t), TranslationCatalog::kHit);
 	}
 
@@ -198,10 +280,10 @@ public:
 		TS_ASSERT_EQUALS(cat.size(), 3u);
 		TS_ASSERT_EQUALS(cat.skipped(), 8u);
 
-		const Common::String *t;
+		Common::String t;
 		// the first entry wins over the duplicate
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0633", "Hello there. ", t), TranslationCatalog::kHit);
-		TS_ASSERT(t && *t == ZH_HELLO);
+		TS_ASSERT(t == ZH_HELLO);
 		// skipped entries leave English text
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0700", "Hi. ", t), TranslationCatalog::kMiss);
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0702", "Hi. ", t), TranslationCatalog::kMiss);
@@ -212,7 +294,7 @@ public:
 		TranslationCatalog cat;
 		TS_ASSERT(loadMO(cat, buildMO(devonEntries(), true)));
 		TS_ASSERT_EQUALS(cat.size(), 3u);
-		const Common::String *t;
+		Common::String t;
 		TS_ASSERT_EQUALS(cat.lookup("ask 0402", "Who are you? ", t), TranslationCatalog::kHit);
 	}
 
