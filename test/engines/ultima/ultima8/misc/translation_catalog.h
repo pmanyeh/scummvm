@@ -158,6 +158,18 @@ public:
 		TS_ASSERT(t && *t == "B");
 	}
 
+	void test_find_context() {
+		TranslationCatalog cat;
+		TS_ASSERT(loadMO(cat, buildMO(devonEntries())));
+		Common::String source, translation;
+		TS_ASSERT(cat.findContext("bark 402:633", source, translation));
+		TS_ASSERT_EQUALS(source, "Hello there. ");
+		TS_ASSERT_EQUALS(translation, ZH_HELLO);
+		TS_ASSERT(cat.findContext("ask 0402", source, translation));
+		TS_ASSERT(!cat.findContext("bark 0402:0634", source, translation));
+		TS_ASSERT(!cat.findContext("bark 0402", source, translation));
+	}
+
 	void test_lowercase_hex_in_file() {
 		Common::Array<MOEntry> e;
 		e.push_back(MOEntry(key("bark 040a:0bcf", "Ale. "), "X"));

@@ -80,6 +80,7 @@ Debugger::Debugger() : GUI::Debugger() {
 	registerCmd("Ultima8Engine::closeItemGumps", WRAP_METHOD(Debugger, cmdCloseItemGumps));
 	registerCmd("Ultima8Engine::barkTestFile", WRAP_METHOD(Debugger, cmdBarkTestFile));
 	registerCmd("Localization::info", WRAP_METHOD(Debugger, cmdLocalizationInfo));
+	registerCmd("Localization::bark", WRAP_METHOD(Debugger, cmdLocalizationBark));
 
 	registerCmd("CameraProcess::moveToAvatar", WRAP_METHOD(Debugger, cmdCameraOnAvatar));
 
@@ -340,6 +341,35 @@ bool Debugger::cmdLocalizationInfo(int argc, const char **argv) {
 	}
 	debugPrintf("%s", l10n->dumpInfo().c_str());
 	return true;
+}
+
+bool Debugger::cmdLocalizationBark(int argc, const char **argv) {
+	if (argc != 2) {
+		debugPrintf("Usage: %s <class>:<ip>\n", argv[0]);
+		debugPrintf("Makes the avatar bark a catalog entry (English text, localized display),\n");
+		debugPrintf("e.g. to test saving while localized text is shown.\n");
+		return true;
+	}
+
+	Localization *l10n = Localization::get_instance();
+	if (!l10n || !l10n->isActive()) {
+		debugPrintf("Localization is not active\n");
+		return true;
+	}
+
+	Common::String source, translation;
+	if (!l10n->catalog().findContext(Common::String("bark ") + argv[1], source, translation)) {
+		debugPrintf("No catalog entry for bark %s\n", argv[1]);
+		return true;
+	}
+
+	MainActor *av = getMainActor();
+	if (!av) {
+		debugPrintf("No main actor\n");
+		return true;
+	}
+	av->bark(source, translation);
+	return false;
 }
 
 bool Debugger::cmdListSFX(int argc, const char **argv) {

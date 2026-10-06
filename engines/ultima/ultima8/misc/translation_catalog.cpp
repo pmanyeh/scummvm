@@ -274,6 +274,22 @@ bool TranslationCatalog::load(Common::SeekableReadStream &rs, const Common::Stri
 	return true;
 }
 
+bool TranslationCatalog::findContext(const Common::String &context, Common::String &source,
+                                     Common::String &translation) const {
+	Common::String canonical;
+	if (!canonicalContext(context, canonical))
+		return false;
+	canonical += CONTEXT_SEPARATOR;
+	for (const auto &e : _entries) {
+		if (e._key.hasPrefix(canonical)) {
+			source = e._key.substr(canonical.size());
+			translation = e._value;
+			return true;
+		}
+	}
+	return false;
+}
+
 TranslationCatalog::Result TranslationCatalog::lookup(const Common::String &context,
 		const Common::String &source, const Common::String *&translation) const {
 	translation = nullptr;

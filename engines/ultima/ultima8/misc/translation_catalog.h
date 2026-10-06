@@ -68,6 +68,10 @@ public:
 	Result lookup(const Common::String &context, const Common::String &source,
 	              const Common::String *&translation) const;
 
+	//! Any one entry of a context (for testing); false if there is none
+	bool findContext(const Common::String &context, Common::String &source,
+	                 Common::String &translation) const;
+
 	uint size() const { return _entries.size(); }
 	uint skipped() const { return _skipped; }
 	//! Language from the catalog header (may be empty)

@@ -2031,12 +2031,12 @@ void Item::clearGump() {
 	_flags &= ~FLG_GUMP_OPEN;
 }
 
-ProcId Item::bark(const Common::String &msg) {
+ProcId Item::bark(const Common::String &msg, const Common::String &displayText) {
 	closeBark();
 
 	uint32 shapenum = getShape();
 
-	Gump *gump = new BarkGump(getObjId(), msg, shapenum);
+	Gump *gump = new BarkGump(getObjId(), msg, shapenum, displayText);
 	_bark = gump->getObjId();
 
 	// Adds talk animations when bark is active.
@@ -3070,14 +3070,14 @@ uint32 Item::I_bark(const uint8 *args, unsigned int /*argsize*/) {
 		return 0;
 	}
 
-	// Localization: identify this bark and look up its translation (see the
-	// Localization debug channel). The translation is not displayed yet;
-	// str stays the game string used for speech, timing and saves.
+	// Localization: the translation is only displayed; str stays the game
+	// string used for speech and savegames.
+	Common::String displayText;
 	Localization *l10n = Localization::get_instance();
 	if (l10n && l10n->isActive())
-		l10n->translateBark(str);
+		displayText = l10n->translateBark(str);
 
-	return item->bark(str);
+	return item->bark(str, displayText);
 }
 
 uint32 Item::I_look(const uint8 *args, unsigned int /*argsize*/) {

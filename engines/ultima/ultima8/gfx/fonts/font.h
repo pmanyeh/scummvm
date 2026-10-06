@@ -98,6 +98,11 @@ public:
 	void setHighRes(bool hr) {
 		_highRes = hr;
 	}
+
+	//! true if the font renders UTF-8 text (localized text needs this)
+	virtual bool isUTF8() const {
+		return false;
+	}
 	bool isHighRes() const {
 		return _highRes;
 	}

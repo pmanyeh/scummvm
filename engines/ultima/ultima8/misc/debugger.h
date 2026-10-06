@@ -49,6 +49,7 @@ private:
 	bool cmdCloseItemGumps(int argc, const char **argv);
 	bool cmdBarkTestFile(int argc, const char **argv);
 	bool cmdLocalizationInfo(int argc, const char **argv);
+	bool cmdLocalizationBark(int argc, const char **argv);
 
 	bool cmdCameraOnAvatar(int argc, const char **argv);
 

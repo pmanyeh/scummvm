@@ -43,6 +43,10 @@ public:
 		return _antiAliased;
 	}
 
+	bool isUTF8() const override {
+		return _utf8;
+	}
+
 	void getStringSize(const Common::String &text,
 		int32 &width, int32 &height) override;
 

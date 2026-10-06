@@ -206,13 +206,16 @@ void TextWidget::saveData(Common::WriteStream *ws) {
 	ws->writeByte(_gameFont ? 1 : 0);
 	ws->writeUint32LE(static_cast<uint32>(_fontNum));
 	ws->writeUint32LE(_blendColour);
-	ws->writeUint32LE(static_cast<uint32>(_currentStart));
-	ws->writeUint32LE(static_cast<uint32>(_currentEnd));
+	// Offsets of the displayed text do not apply to the saved text
+	bool saveOther = !_saveText.empty();
+	const Common::String &text = saveOther ? _saveText : _text;
+	ws->writeUint32LE(saveOther ? 0 : static_cast<uint32>(_currentStart));
+	ws->writeUint32LE(saveOther ? 0 : static_cast<uint32>(_currentEnd));
 	ws->writeUint32LE(static_cast<uint32>(_targetWidth));
 	ws->writeUint32LE(static_cast<uint32>(_targetHeight));
 	ws->writeUint16LE(static_cast<uint16>(_textAlign));
-	ws->writeUint32LE(_text.size());
-	ws->write(_text.c_str(), _text.size());
+	ws->writeUint32LE(text.size());
+	ws->write(text.c_str(), text.size());
 }
 
 bool TextWidget::loadData(Common::ReadStream *rs, uint32 version) {

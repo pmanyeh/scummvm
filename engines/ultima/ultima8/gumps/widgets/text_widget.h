@@ -38,6 +38,7 @@ class RenderedText;
 class TextWidget : public Gump {
 protected:
 	Common::String     _text;
+	Common::String     _saveText; //!< written to savegames instead of _text if set (not saved)
 	bool            _gameFont;
 	int             _fontNum;
 	uint32          _blendColour;
@@ -96,6 +97,13 @@ public:
 
 	const Common::String &getText() const {
 		return _text;
+	}
+
+	//! Save this text instead of the displayed one. Used for localized
+	//! text, so savegames keep the original game text. The saved widget
+	//! starts again at its first page.
+	void setSaveText(const Common::String &text) {
+		_saveText = text;
 	}
 
 protected:

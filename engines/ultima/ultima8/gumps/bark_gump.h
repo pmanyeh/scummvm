@@ -35,6 +35,7 @@ namespace Ultima8 {
 class BarkGump : public ItemRelativeGump {
 protected:
 	Common::String _barked;
+	Common::String _displayText; //!< localized text to show instead of _barked (not saved)
 	int32 _counter;
 	ObjId _textWidget;
 	uint32 _speechShapeNum;
@@ -47,7 +48,8 @@ public:
 	ENABLE_RUNTIME_CLASSTYPE()
 
 	BarkGump();
-	BarkGump(uint16 owner, const Common::String &msg, uint32 speechShapeNum = 0);
+	BarkGump(uint16 owner, const Common::String &msg, uint32 speechShapeNum = 0,
+	         const Common::String &displayText = Common::String());
 	~BarkGump() override;
 
 	// Run the gump (decrement the counter)

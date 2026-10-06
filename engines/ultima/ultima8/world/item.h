@@ -268,7 +268,8 @@ public:
 	//! Close this Item's gump, if any
 	void closeGump();
 
-	ProcId bark(const Common::String &msg);
+	//! \param displayText localized text to show instead of msg (optional)
+	ProcId bark(const Common::String &msg, const Common::String &displayText = Common::String());
 	//! Call this to notify the Item's open bark has closed.
 	void clearBark(); // set bark to 0
 	//! Close this Item's bark, if any

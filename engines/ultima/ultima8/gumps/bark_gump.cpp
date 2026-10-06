@@ -21,6 +21,8 @@
 
 #include "common/config-manager.h"
 
+#include "ultima/ultima8/gfx/fonts/font.h"
+#include "ultima/ultima8/gfx/fonts/font_manager.h"
 #include "ultima/ultima8/gumps/bark_gump.h"
 #include "ultima/ultima8/gumps/widgets/text_widget.h"
 #include "ultima/ultima8/kernel/kernel.h"
@@ -46,9 +48,10 @@ BarkGump::BarkGump() : ItemRelativeGump(), _counter(0), _textWidget(0),
 	_talkSpeed = ConfMan.getInt("talkspeed");
 }
 
-BarkGump::BarkGump(uint16 owner, const Common::String &msg, uint32 speechShapeNum) :
+BarkGump::BarkGump(uint16 owner, const Common::String &msg, uint32 speechShapeNum,
+                   const Common::String &displayText) :
 	ItemRelativeGump(0, 0, 100, 100, owner, FLAG_KEEP_VISIBLE, LAYER_ABOVE_NORMAL),
-	_barked(msg), _counter(100), _speechShapeNum(speechShapeNum),
+	_barked(msg), _displayText(displayText), _counter(100), _speechShapeNum(speechShapeNum),
 	_speechLength(0), _textWidget(0),
 	_subtitles(false), _speechMute(false), _talkSpeed(0) {
 	_subtitles = ConfMan.getBool("subtitles");
@@ -86,8 +89,19 @@ void BarkGump::InitGump(Gump *newparent, bool take_focus) {
 	// This is a hack. We init the gump twice...
 	ItemRelativeGump::InitGump(newparent, take_focus);
 
+	// Show the localized text if the font can draw it. _barked stays the
+	// game string for speech and savegames.
+	bool localized = !_displayText.empty() && _displayText != _barked;
+	if (localized && !FontManager::get_instance()->getGameFont(fontnum, true)->isUTF8()) {
+		warning("[U8-L10N] font %d cannot show localized text, showing English", fontnum);
+		localized = false;
+	}
+
 	// Create the TextWidget
-	TextWidget *widget = new TextWidget(0, 0, _barked, true, fontnum, 194, 55);
+	TextWidget *widget = new TextWidget(0, 0, localized ? _displayText : _barked,
+	                                    true, fontnum, 194, 55);
+	if (localized)
+		widget->setSaveText(_barked);
 	widget->InitGump(this);
 
 	_textWidget = widget->getObjId();
@@ -146,8 +160,11 @@ int BarkGump::calculateTicks() {
 	uint length = end - start;
 	int ticks = INT_MAX_VALUE;
 	if (length > 0) {
-		if (_speechLength && !_barked.empty()) {
-			ticks = (length * _speechLength) / (_barked.size() * MILLIS_PER_TICK);
+		// Share the speech length among the pages of the shown text,
+		// which can differ from _barked when localized
+		uint total = widget->getText().size();
+		if (_speechLength && total) {
+			ticks = (length * _speechLength) / (total * MILLIS_PER_TICK);
 		} else if (_talkSpeed) {
 			ticks = (length * NO_SPEECH_LENGTH) / _talkSpeed;
 		}
