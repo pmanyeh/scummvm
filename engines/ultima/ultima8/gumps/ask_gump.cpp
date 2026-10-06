@@ -20,6 +20,8 @@
  */
 
 
+#include "ultima/ultima8/gfx/fonts/font.h"
+#include "ultima/ultima8/gfx/fonts/font_manager.h"
 #include "ultima/ultima8/gumps/ask_gump.h"
 #include "ultima/ultima8/gumps/bark_gump.h"
 #include "ultima/ultima8/gumps/widgets/button_widget.h"
@@ -35,9 +37,10 @@ DEFINE_RUNTIME_CLASSTYPE_CODE(AskGump)
 AskGump::AskGump() : ItemRelativeGump(), _answers(0) {
 }
 
-AskGump::AskGump(uint16 owner, UCList *answers) :
+AskGump::AskGump(uint16 owner, UCList *answers,
+                 const Common::Array<Common::String> &displayAnswers) :
 	ItemRelativeGump(0, 0, 0, 0, owner, FLAG_KEEP_VISIBLE, LAYER_ABOVE_NORMAL),
-	_answers(new UCList(2)) {
+	_answers(new UCList(2)), _displayAnswers(displayAnswers) {
 	_answers->copyStringList(*answers);
 }
 
@@ -56,14 +59,28 @@ void AskGump::InitGump(Gump *newparent, bool take_focus) {
 	// This is a hack. We init the gump twice...
 	ItemRelativeGump::InitGump(newparent, take_focus);
 
+	// Localized answers are only shown; the answer list (and so the
+	// result) keeps the original strings.
+	bool canLocalize = !_displayAnswers.empty();
+	if (canLocalize && !FontManager::get_instance()->getGameFont(fontnum, true)->isUTF8()) {
+		warning("[U8-L10N] font %d cannot show localized text, showing English", fontnum);
+		canLocalize = false;
+	}
+
 	for (unsigned int i = 0; i < _answers->getSize(); ++i) {
+		const Common::String &answer = UCMachine::get_instance()->getString(_answers->getStringIndex(i));
+		bool localized = canLocalize && i < _displayAnswers.size() &&
+		                 !_displayAnswers[i].empty() && _displayAnswers[i] != answer;
+
 		Common::String str_answer = "@ ";
-		str_answer += UCMachine::get_instance()->getString(_answers->getStringIndex(i));
+		str_answer += localized ? _displayAnswers[i] : answer;
 
 		ButtonWidget *child = new ButtonWidget(px, py, str_answer,
 		                                       true, fontnum);
 		child->InitGump(this);
 		child->SetIndex(i);
+		if (localized)
+			child->setSaveText("@ " + answer);
 
 		Common::Rect32 cd = child->getDims();
 		if (i + 1 < _answers->getSize())

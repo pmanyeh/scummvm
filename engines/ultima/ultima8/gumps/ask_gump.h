@@ -22,6 +22,8 @@
 #ifndef ULTIMA8_GUMPS_ASKGUMP_H
 #define ULTIMA8_GUMPS_ASKGUMP_H
 
+#include "common/array.h"
+#include "common/str.h"
 #include "ultima/ultima8/gumps/item_relative_gump.h"
 #include "ultima/ultima8/misc/classtype.h"
 
@@ -35,12 +37,15 @@ class UCList;
  */
 class AskGump : public ItemRelativeGump {
 	UCList *_answers;
+	//! localized texts to show instead of the answers (not saved)
+	Common::Array<Common::String> _displayAnswers;
 public:
 	// p_dynamic_class stuff
 	ENABLE_RUNTIME_CLASSTYPE()
 
 	AskGump();
-	AskGump(uint16 owner, UCList *answers);
+	AskGump(uint16 owner, UCList *answers,
+	        const Common::Array<Common::String> &displayAnswers = Common::Array<Common::String>());
 	~AskGump() override;
 
 	// Init the gump, call after construction

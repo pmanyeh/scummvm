@@ -3165,16 +3165,19 @@ uint32 Item::I_ask(const uint8 *args, unsigned int /*argsize*/) {
 		actor->closeBark();
 
 	// Localization: answers are identified by the asking class and their
-	// English text. Looked up only; the answer list is never changed.
+	// English text. The translations are only shown; the answer list and
+	// so the answer returned to usecode are never changed.
+	Common::Array<Common::String> displayAnswers;
 	Localization *l10n = Localization::get_instance();
 	if (l10n && l10n->isActive()) {
 		uint16 classId = Localization::runningClassId();
 		for (unsigned int i = 0; i < answers->getSize(); ++i)
-			l10n->translateAnswer(classId, UCMachine::get_instance()->getString(answers->getStringIndex(i)));
+			displayAnswers.push_back(l10n->translateAnswer(classId,
+				UCMachine::get_instance()->getString(answers->getStringIndex(i))));
 	}
 
 	// Use AskGump
-	Gump *_gump = new AskGump(1, answers);
+	Gump *_gump = new AskGump(1, answers, displayAnswers);
 	_gump->InitGump(0);
 	return _gump->GetNotifyProcess()->getPid();
 }

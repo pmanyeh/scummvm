@@ -57,6 +57,9 @@ public:
 	//! return the textwidget's vlead, or 0 for an image button
 	int getVlead();
 
+	//! Save this text instead of the shown one (see TextWidget::setSaveText)
+	void setSaveText(const Common::String &text);
+
 	//void SetShapeDown(Shape *_shape, uint32 frameNum);
 	//void SetShapeUp(Shape *_shape, uint32 frameNum);
 

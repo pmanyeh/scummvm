@@ -93,6 +93,12 @@ int ButtonWidget::getVlead() {
 	}
 }
 
+void ButtonWidget::setSaveText(const Common::String &text) {
+	TextWidget *txtWidget = dynamic_cast<TextWidget *>(getGump(_textWidget));
+	if (txtWidget)
+		txtWidget->setSaveText(text);
+}
+
 bool ButtonWidget::PointOnGump(int mx, int my) {
 	// CHECKME: this makes the ButtonWidget accept any point in its rectangle,
 	// effectively ignoring shape transparency. For some buttons (like those
