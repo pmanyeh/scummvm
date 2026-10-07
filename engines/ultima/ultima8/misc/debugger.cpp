@@ -87,6 +87,7 @@ Debugger::Debugger() : GUI::Debugger() {
 	registerCmd("Localization::bark", WRAP_METHOD(Debugger, cmdLocalizationBark));
 	registerCmd("Localization::say", WRAP_METHOD(Debugger, cmdLocalizationSay));
 	registerCmd("Localization::gravestone", WRAP_METHOD(Debugger, cmdLocalizationGravestone));
+	registerCmd("Localization::guardianBark", WRAP_METHOD(Debugger, cmdLocalizationGuardianBark));
 	registerCmd("Localization::read", WRAP_METHOD(Debugger, cmdLocalizationRead));
 
 	registerCmd("CameraProcess::moveToAvatar", WRAP_METHOD(Debugger, cmdCameraOnAvatar));
@@ -410,6 +411,26 @@ bool Debugger::cmdLocalizationSay(int argc, const char **argv) {
 	Common::String translation = l10n->translate(Common::String("bark ") + argv[1], source);
 	debugPrintf("%s\n", translation == source ? "No translation, English is shown" : "Translated");
 	av->bark(source, translation);
+	return false;
+}
+
+bool Debugger::cmdLocalizationGuardianBark(int argc, const char **argv) {
+	if (!GAME_IS_U8) {
+		debugPrintf("Only in Ultima VIII\n");
+		return true;
+	}
+	if (argc != 2) {
+		debugPrintf("Usage: %s <1-23>\n", argv[0]);
+		debugPrintf("Runs the avatar's guardianBark usecode event: the Guardian says one of\n");
+		debugPrintf("his taunts, with speech (to test speech and subtitles)\n");
+		return true;
+	}
+	MainActor *av = getMainActor();
+	if (!av) {
+		debugPrintf("No main actor\n");
+		return true;
+	}
+	av->callUsecodeEvent_guardianBark(static_cast<int16>(strtol(argv[1], nullptr, 0)));
 	return false;
 }
 

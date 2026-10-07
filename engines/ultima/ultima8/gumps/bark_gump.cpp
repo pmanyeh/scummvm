@@ -158,15 +158,17 @@ int BarkGump::calculateTicks() {
 	uint start = 0, end = 0;
 	TextWidget *widget = dynamic_cast<TextWidget *>(getGump(_textWidget));
 	widget->getCurrentText(start, end);
-	// Measured in English letters, not bytes: a CJK character (3 bytes of
-	// UTF-8) counts as much as three letters
+	// Text of a UTF-8 font (localized) is measured in English letters, not
+	// bytes: a CJK character (3 bytes of UTF-8) counts as much as three
+	// letters. Other text (English, Japanese Shift-JIS) keeps the byte count.
 	const Common::String &text = widget->getText();
-	uint length = TranslationCatalog::readingLength(text, start, end);
+	bool utf8 = FontManager::get_instance()->getGameFont(dialogFontForActor(_owner), true)->isUTF8();
+	uint length = utf8 ? TranslationCatalog::readingLength(text, start, end) : end - start;
 	int ticks = INT_MAX_VALUE;
 	if (length > 0) {
 		// Share the speech length among the pages of the shown text,
 		// which can differ from _barked when localized
-		uint total = TranslationCatalog::readingLength(text);
+		uint total = utf8 ? TranslationCatalog::readingLength(text) : text.size();
 		if (_speechLength && total) {
 			ticks = (length * _speechLength) / (total * MILLIS_PER_TICK);
 		} else if (_talkSpeed) {
