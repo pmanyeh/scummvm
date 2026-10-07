@@ -85,6 +85,7 @@ Debugger::Debugger() : GUI::Debugger() {
 	registerCmd("Ultima8Engine::barkTestFile", WRAP_METHOD(Debugger, cmdBarkTestFile));
 	registerCmd("Localization::info", WRAP_METHOD(Debugger, cmdLocalizationInfo));
 	registerCmd("Localization::bark", WRAP_METHOD(Debugger, cmdLocalizationBark));
+	registerCmd("Localization::say", WRAP_METHOD(Debugger, cmdLocalizationSay));
 	registerCmd("Localization::gravestone", WRAP_METHOD(Debugger, cmdLocalizationGravestone));
 	registerCmd("Localization::read", WRAP_METHOD(Debugger, cmdLocalizationRead));
 
@@ -374,6 +375,40 @@ bool Debugger::cmdLocalizationBark(int argc, const char **argv) {
 		debugPrintf("No main actor\n");
 		return true;
 	}
+	av->bark(source, translation);
+	return false;
+}
+
+bool Debugger::cmdLocalizationSay(int argc, const char **argv) {
+	if (argc < 3) {
+		debugPrintf("Usage: %s <class>:<ip> <English text>\n", argv[0]);
+		debugPrintf("Makes the avatar bark the English text as if the bark at <class>:<ip>\n");
+		debugPrintf("said it: tests sentence templates and parameter values, e.g.\n");
+		debugPrintf("  %s 040A:1F16 Greetings again stranger . Will ye be havin' another Blackwine ?\n", argv[0]);
+		debugPrintf("(words are joined with single spaces; put the text in \"quotes\" to keep\n");
+		debugPrintf("other spacing, e.g. a space at the end)\n");
+		return true;
+	}
+
+	Localization *l10n = Localization::get_instance();
+	if (!l10n || !l10n->isActive()) {
+		debugPrintf("Localization is not active\n");
+		return true;
+	}
+
+	Common::String source = argv[2];
+	for (int i = 3; i < argc; i++) {
+		source += " ";
+		source += argv[i];
+	}
+
+	MainActor *av = getMainActor();
+	if (!av) {
+		debugPrintf("No main actor\n");
+		return true;
+	}
+	Common::String translation = l10n->translate(Common::String("bark ") + argv[1], source);
+	debugPrintf("%s\n", translation == source ? "No translation, English is shown" : "Translated");
 	av->bark(source, translation);
 	return false;
 }

@@ -25,6 +25,7 @@
 #include "common/endian.h"
 #include "common/stream.h"
 #include "common/textconsole.h"
+#include "common/util.h"
 
 #include "ultima/ultima.h"
 #include "ultima/ultima8/misc/translation_catalog.h"
@@ -90,6 +91,10 @@ Common::String TranslationCatalog::canonicalParam(const Common::String &name) {
 		return Common::String::format("var%02X", value);
 	if (name.hasPrefix("call_") && parseHex(name.substr(5), value))
 		return Common::String::format("call_%04X", value);
+	// partN: a piece of a sentence combined from pieces (N = 1..99)
+	if (name.hasPrefix("part") && name.size() >= 5 && name.size() <= 6 && name[4] != '0' &&
+	        Common::isDigit(name[4]) && (name.size() == 5 || Common::isDigit(name[5])))
+		return name;
 	return Common::String();
 }
 
@@ -262,6 +267,53 @@ bool TranslationCatalog::isValidUTF8(const Common::String &text) {
 	return true;
 }
 
+uint TranslationCatalog::readingLength(const Common::String &text, uint start, uint end) {
+	if (end > text.size())
+		end = text.size();
+	uint length = 0;
+	uint i = start;
+	while (i < end) {
+		uint8 c = text[i];
+		uint n = 1;
+		uint32 cp = c;
+		if (c >= 0xC2 && c <= 0xF4) {
+			n = c <= 0xDF ? 2 : (c <= 0xEF ? 3 : 4);
+			cp = c & (0x7F >> n);
+			for (uint k = 1; k < n; k++) {
+				uint8 cc = i + k < end ? static_cast<uint8>(text[i + k]) : 0;
+				if ((cc & 0xC0) != 0x80) {
+					n = 0;
+					break;
+				}
+				cp = (cp << 6) | (cc & 0x3F);
+			}
+			if (!n) {
+				// not UTF-8: a byte of the game's code page
+				n = 1;
+				cp = c;
+			}
+		}
+		// CJK characters and full-width forms: one takes about as long to
+		// read as three English letters (and translates about three)
+		length += (cp >= 0x2E80 && cp <= 0xD7FF) || (cp >= 0xF900 && cp <= 0xFFEF) ||
+		          (cp >= 0x20000 && cp <= 0x3FFFF) ? CJK_READING_WEIGHT : 1;
+		i += n;
+	}
+	return length;
+}
+
+void TranslationCatalog::listEntries(Common::Array<Entry> &entries) const {
+	entries.clear();
+	for (EntryMap::const_iterator it = _entries.begin(); it != _entries.end(); ++it) {
+		size_t sep = it->_key.findFirstOf(CONTEXT_SEPARATOR);
+		Entry e;
+		e._context = it->_key.substr(0, sep);
+		e._source = it->_key.substr(sep + 1);
+		e._translation = it->_value;
+		entries.push_back(e);
+	}
+}
+
 void TranslationCatalog::parseHeader(const Common::String &header) {
 	size_t start = 0;
 	while (start < header.size()) {
@@ -342,6 +394,9 @@ void TranslationCatalog::addEntry(const Common::String &key, const Common::Strin
 		Template t;
 		t._source = source;
 		t._translation = translation;
+		t._literalLength = source.size();
+		for (uint i = 0; i < sourceNames.size(); i++)
+			t._literalLength -= sourceNames[i].size() + 2;
 		_templates[context].push_back(t);
 	}
 	// An answer is identified by its text, so a different text is simply
@@ -457,26 +512,35 @@ bool TranslationCatalog::lookupTemplate(const Common::String &context, const Com
 	// Parameters belong to the class of the bark ("bark CCCC:IIII")
 	Common::String paramPrefix = "param " + context.substr(5, 4) + ":";
 
+	// If several templates match, the one with the most fixed text is the
+	// most specific ("{part1}of {part2}" vs "{part1}of {part2}with {num} uses")
+	const Template *best = nullptr;
+	Common::Array<Common::String> bestValues;
 	for (const Template &tmpl : t->_value) {
-		Common::Array<Common::String> names, values;
-		if (!matchTemplate(tmpl._source, source, values))
-			continue;
-		placeholders(tmpl._source, names);
-
-		for (uint i = 0; i < names.size(); i++) {
-			if (!names[i].hasPrefix("var") && !names[i].hasPrefix("call_"))
-				continue;
-			Common::String key = paramPrefix + names[i];
-			key += CONTEXT_SEPARATOR;
-			key += values[i];
-			EntryMap::const_iterator p = _entries.find(key);
-			if (p != _entries.end())
-				values[i] = p->_value;
+		Common::Array<Common::String> values;
+		if ((!best || tmpl._literalLength > best->_literalLength) &&
+		        matchTemplate(tmpl._source, source, values)) {
+			best = &tmpl;
+			bestValues = values;
 		}
-		translation = fillTemplate(tmpl._translation, names, values);
-		return true;
 	}
-	return false;
+	if (!best)
+		return false;
+
+	Common::Array<Common::String> names;
+	placeholders(best->_source, names);
+	for (uint i = 0; i < names.size(); i++) {
+		if (names[i] == "name" || names[i] == "num")
+			continue;
+		Common::String key = paramPrefix + names[i];
+		key += CONTEXT_SEPARATOR;
+		key += bestValues[i];
+		EntryMap::const_iterator p = _entries.find(key);
+		if (p != _entries.end())
+			bestValues[i] = p->_value;
+	}
+	translation = fillTemplate(best->_translation, names, bestValues);
+	return true;
 }
 
 TranslationCatalog::Result TranslationCatalog::lookup(const Common::String &context,

@@ -26,6 +26,7 @@
 #include "ultima/ultima8/gumps/bark_gump.h"
 #include "ultima/ultima8/gumps/widgets/text_widget.h"
 #include "ultima/ultima8/kernel/kernel.h"
+#include "ultima/ultima8/misc/translation_catalog.h"
 #include "ultima/ultima8/audio/audio_process.h"
 #include "ultima/ultima8/world/get_object.h"
 #include "ultima/ultima8/world/item.h"
@@ -157,12 +158,15 @@ int BarkGump::calculateTicks() {
 	uint start = 0, end = 0;
 	TextWidget *widget = dynamic_cast<TextWidget *>(getGump(_textWidget));
 	widget->getCurrentText(start, end);
-	uint length = end - start;
+	// Measured in English letters, not bytes: a CJK character (3 bytes of
+	// UTF-8) counts as much as three letters
+	const Common::String &text = widget->getText();
+	uint length = TranslationCatalog::readingLength(text, start, end);
 	int ticks = INT_MAX_VALUE;
 	if (length > 0) {
 		// Share the speech length among the pages of the shown text,
 		// which can differ from _barked when localized
-		uint total = widget->getText().size();
+		uint total = TranslationCatalog::readingLength(text);
 		if (_speechLength && total) {
 			ticks = (length * _speechLength) / (total * MILLIS_PER_TICK);
 		} else if (_talkSpeed) {

@@ -45,6 +45,27 @@ Common::String normalizeLanguage(Common::String lang) {
 	return lang;
 }
 
+// Lay out text the way a paging TextWidget does; returns the page count
+uint layoutPages(Font *font, const Common::String &text, int32 width, int32 height,
+                 int32 &maxWidth, int32 &maxHeight) {
+	uint pages = 0;
+	uint start = 0;
+	maxWidth = maxHeight = 0;
+	while (start < text.size()) {
+		int32 w = 0, h = 0;
+		unsigned int remaining = 0;
+		font->getTextSize(text.substr(start), w, h, remaining, width, height,
+		                  Font::TEXT_LEFT, true, true);
+		pages++;
+		maxWidth = MAX(maxWidth, w);
+		maxHeight = MAX(maxHeight, h);
+		if (!remaining)
+			break;
+		start += remaining;
+	}
+	return pages;
+}
+
 } // End of anonymous namespace
 
 Localization *Localization::_instance = nullptr;
@@ -53,6 +74,7 @@ Localization::Localization() : _catalogLoaded(false), _fontReady(false) {
 	_instance = this;
 
 	ConfMan.registerDefault("localization", "off");
+	ConfMan.registerDefault("localization_measure", false);
 }
 
 Localization::~Localization() {
@@ -197,6 +219,68 @@ Common::String Localization::uiText(const Common::String &english, int fontnum) 
 uint16 Localization::runningClassId() {
 	UCProcess *proc = dynamic_cast<UCProcess *>(Kernel::get_instance()->getRunningProcess());
 	return proc ? proc->getClassId() : 0;
+}
+
+void Localization::measureCatalog() const {
+	if (!isActive()) {
+		debugC(1, kDebugLocalization, "[U8-L10N] measure: localization is not active");
+		return;
+	}
+
+	// Text box of each kind of text: font, width, height (0 = unlimited)
+	struct Box {
+		const char *_kind;
+		int _font;
+		int32 _width, _height;
+	};
+	static const Box boxes[] = {
+		{ "bark", 0, 194, 55 },     // BarkGump (fonts 0, 5-8 are the same CJK font)
+		{ "ask", 0, 0, 0 },         // AskGump answer, one line ("@ " + text)
+		{ "book", 9, 123, 129 },    // BookGump, one page (two per spread)
+		{ "scroll", 9, 204, 115 },  // ScrollGump
+		{ "grave", 6, 0, 0 },       // ReadableGump subtitle (one line)
+		{ "plaque", 6, 0, 0 }
+	};
+
+	Common::Array<TranslationCatalog::Entry> entries;
+	_catalog.listEntries(entries);
+	FontManager *fm = FontManager::get_instance();
+	debugC(1, kDebugLocalization, "[U8-L10N] measure\tcontext\tpagesEN\tpagesL10N\twEN\thEN"
+	       "\twL10N\thL10N\treadEN\treadL10N\tsource");
+	for (const TranslationCatalog::Entry &e : entries) {
+		const Box *box = nullptr;
+		for (const Box &b : boxes) {
+			if (e._context.hasPrefix(b._kind) && e._context[strlen(b._kind)] == ' ')
+				box = &b;
+		}
+		if (!box)
+			continue;
+
+		Common::String source = e._source, translation = e._translation;
+		if (!strcmp(box->_kind, "ask")) {
+			source = "@ " + source;
+			translation = "@ " + translation;
+		}
+		Font *original = fm->getGameFont(box->_font, false);
+		Font *localized = fm->getGameFont(box->_font, true);
+		int32 wEN = 0, hEN = 0, wL = 0, hL = 0;
+		// gravestone and plaque: the English engraving stays, only the
+		// subtitle is new
+		bool subtitle = !strcmp(box->_kind, "grave") || !strcmp(box->_kind, "plaque");
+		uint pagesEN = subtitle ? 0 : layoutPages(original, source, box->_width, box->_height, wEN, hEN);
+		uint pagesL = layoutPages(localized, translation, box->_width, box->_height, wL, hL);
+
+		Common::String shown = e._source;
+		for (uint i = 0; i < shown.size(); i++) {
+			if (shown[i] == '\t' || shown[i] == '\n')
+				shown.setChar(' ', i);
+		}
+		debugC(1, kDebugLocalization, "[U8-L10N] measure\t%s\t%u\t%u\t%d\t%d\t%d\t%d\t%u\t%u\t%s",
+		       e._context.c_str(), pagesEN, pagesL, wEN, hEN, wL, hL,
+		       TranslationCatalog::readingLength(e._source),
+		       TranslationCatalog::readingLength(e._translation), shown.c_str());
+	}
+	debugC(1, kDebugLocalization, "[U8-L10N] measure done, %u entries", entries.size());
 }
 
 Common::String Localization::dumpInfo() const {

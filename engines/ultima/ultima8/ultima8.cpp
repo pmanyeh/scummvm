@@ -606,6 +606,10 @@ Common::Error Ultima8Engine::startupGame() {
 	if (!newGame(saveSlot))
 		return Common::kNoGameDataFoundError;
 
+	// Diagnostics: page counts of all translations (tools/catalog/measure.py)
+	if (ConfMan.getBool("localization_measure"))
+		_localization->measureCatalog();
+
 	debug(1, "-- Game Initialized --");
 	return Common::kNoError;
 }

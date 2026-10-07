@@ -99,6 +99,14 @@ public:
 
 	Common::String dumpInfo() const;
 
+	/**
+	 * Lay out every catalog entry with the fonts and text box sizes of
+	 * its kind of text and log the page counts and sizes, English and
+	 * localized (setting localization_measure; tools/catalog/measure.py
+	 * summarizes the log).
+	 */
+	void measureCatalog() const;
+
 private:
 	static Localization *_instance;
 

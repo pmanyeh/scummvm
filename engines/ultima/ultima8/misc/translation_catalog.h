@@ -102,11 +102,31 @@ public:
 	//! Parse a context and write it in canonical form ("bark 0402:0633")
 	static bool canonicalContext(const Common::String &context, Common::String &canonical);
 
-	//! "varf7" -> "varF7", "call_0bcf" -> "call_0BCF"; empty if not a parameter name
+	//! "varf7" -> "varF7", "call_0bcf" -> "call_0BCF", "part1" -> "part1";
+	//! empty if not a parameter name
 	static Common::String canonicalParam(const Common::String &name);
 
 	//! True if the whole string is valid UTF-8
 	static bool isValidUTF8(const Common::String &text);
+
+	//! How much a CJK character counts in readingLength()
+	static const uint CJK_READING_WEIGHT = 3;
+
+	/**
+	 * Length of text[start, end) for timing how long it is shown, in English
+	 * letters: a CJK character counts CJK_READING_WEIGHT, any other
+	 * character (UTF-8 or a byte of the game's code page) counts 1.
+	 */
+	static uint readingLength(const Common::String &text, uint start = 0,
+	                          uint end = 0xFFFFFFFF);
+
+	struct Entry {
+		Common::String _context;
+		Common::String _source;
+		Common::String _translation;
+	};
+	//! All entries, in no particular order (for diagnostics)
+	void listEntries(Common::Array<Entry> &entries) const;
 
 	/**
 	 * Placeholders of a template, in order (without braces).
@@ -133,6 +153,7 @@ private:
 	struct Template {
 		Common::String _source;
 		Common::String _translation;
+		uint _literalLength;  //!< length of the fixed text of _source
 	};
 	typedef Common::HashMap<Common::String, Common::Array<Template> > TemplateMap;
 

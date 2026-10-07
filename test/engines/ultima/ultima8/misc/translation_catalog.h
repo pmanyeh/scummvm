@@ -202,6 +202,17 @@ public:
 		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("varf7"), "varF7");
 		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("call_bcf"), "call_0BCF");
 		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("name"), "");
+		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("part1"), "part1");
+		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("part12"), "part12");
+		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("part0"), "");
+		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("part01"), "");
+		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("part123"), "");
+		TS_ASSERT_EQUALS(TranslationCatalog::canonicalParam("part"), "");
+		TS_ASSERT(TranslationCatalog::placeholders("{part1}of {part2}", n));
+		TS_ASSERT_EQUALS(n.size(), 2u);
+		Common::String c;
+		TS_ASSERT(TranslationCatalog::canonicalContext("param 18d:part2", c));
+		TS_ASSERT_EQUALS(c, "param 018D:part2");
 	}
 
 	void test_match_template() {
@@ -261,6 +272,50 @@ public:
 		// templates are per call site
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0965", "Glad to see you, Pman.", t), TranslationCatalog::kMiss);
 		TS_ASSERT_EQUALS(cat.lookup("bark 0402:0999", "Bye Pman.", t), TranslationCatalog::kMiss);
+	}
+
+	// Timing counts letters, not bytes: CJK characters count 3
+	void test_reading_length() {
+		TS_ASSERT_EQUALS(TranslationCatalog::readingLength("Hello there. "), 13u);
+		TS_ASSERT_EQUALS(TranslationCatalog::readingLength(ZH_HELLO), 4u * 3u);
+		TS_ASSERT_EQUALS(TranslationCatalog::readingLength("Pman" ZH_HELLO), 4u + 4u * 3u);
+		// full-width punctuation counts as CJK, other UTF-8 as one letter
+		TS_ASSERT_EQUALS(TranslationCatalog::readingLength("\xEF\xBC\x81"), 3u);
+		TS_ASSERT_EQUALS(TranslationCatalog::readingLength("caf\xC3\xA9"), 4u);
+		// the game's own code page 437 bytes count one each
+		TS_ASSERT_EQUALS(TranslationCatalog::readingLength("M\x81nchen"), 7u);
+		// a part of the text
+		TS_ASSERT_EQUALS(TranslationCatalog::readingLength("ab" ZH_HELLO "cd", 2, 2 + 3), 3u);
+		TS_ASSERT_EQUALS(TranslationCatalog::readingLength("abc", 1), 2u);
+	}
+
+	// A sentence combined from pieces (FIREITEM): several templates of one
+	// call site match; the one with the most fixed text wins
+	void test_part_templates() {
+		Common::Array<MOEntry> e;
+		e.push_back(MOEntry(key("bark 018D:0462", "{part1}of {part2}"), "{part2}{part1}"));
+		e.push_back(MOEntry(key("bark 018D:0462", "{part1}of {part2}with {num} uses remaining"),
+		                    "{part2}{part1}/{num}"));
+		e.push_back(MOEntry(key("bark 018D:0462", "wand "), "W"));
+		e.push_back(MOEntry(key("param 018D:part1", "wand "), "W"));
+		e.push_back(MOEntry(key("param 018D:part2", "armor of flames "), "A"));
+		TranslationCatalog cat;
+		TS_ASSERT(loadMO(cat, buildMO(e)));
+		TS_ASSERT_EQUALS(cat.skipped(), 0u);
+
+		Common::String t;
+		TS_ASSERT_EQUALS(cat.lookup("bark 018D:0462", "wand of armor of flames with 3 uses remaining", t),
+		                 TranslationCatalog::kHit);
+		TS_ASSERT_EQUALS(t, "AW/3");
+		TS_ASSERT_EQUALS(cat.lookup("bark 018D:0462", "wand of armor of flames ", t),
+		                 TranslationCatalog::kHit);
+		TS_ASSERT_EQUALS(t, "AW");
+		// a piece without translation stays English
+		TS_ASSERT_EQUALS(cat.lookup("bark 018D:0462", "rod of ignite ", t), TranslationCatalog::kHit);
+		TS_ASSERT_EQUALS(t, "ignite rod ");
+		// a whole sentence entry comes before the templates
+		TS_ASSERT_EQUALS(cat.lookup("bark 018D:0462", "wand ", t), TranslationCatalog::kHit);
+		TS_ASSERT_EQUALS(t, "W");
 	}
 
 	void test_readers() {
