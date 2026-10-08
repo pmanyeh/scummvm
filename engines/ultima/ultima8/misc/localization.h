@@ -22,11 +22,16 @@
 #ifndef ULTIMA8_MISC_LOCALIZATION_H
 #define ULTIMA8_MISC_LOCALIZATION_H
 
+#include "common/array.h"
+#include "common/hashmap.h"
 #include "common/str.h"
+#include "ultima/ultima8/misc/common_types.h"
 #include "ultima/ultima8/misc/translation_catalog.h"
 
 namespace Ultima {
 namespace Ultima8 {
+
+class Process;
 
 /**
  * Display-time localization. The game always runs on its original English
@@ -97,6 +102,14 @@ public:
 	//! Class of the running usecode process (0 if none)
 	static uint16 runningClassId();
 
+	/**
+	 * Add the English to the names text shows for the first time in this
+	 * conversation (setting localization_annotate). A conversation is the
+	 * usecode process that shows it; nullptr: text that stands on its own
+	 * (a book, scroll, ...).
+	 */
+	Common::String annotate(const Common::String &text, Process *conversation) const;
+
 	Common::String dumpInfo() const;
 
 	/**
@@ -114,7 +127,16 @@ private:
 	Common::String _file;       //!< catalog file in use
 	bool _catalogLoaded;
 	bool _fontReady;
+	bool _annotate;             //!< add the English to names (localization_annotate)
 	TranslationCatalog _catalog;
+
+	//! Names already annotated in a conversation (usecode process)
+	struct ShownTerms {
+		ProcId _pid;
+		Process *_process;
+		Common::HashMap<Common::String, bool> _shown;
+	};
+	mutable Common::Array<ShownTerms> _shownTerms;
 };
 
 } // End of namespace Ultima8

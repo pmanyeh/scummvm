@@ -60,15 +60,32 @@ bool parseHex(const Common::String &s, uint16 &value) {
 	return true;
 }
 
+//! Bytes of the UTF-8 character starting with c (1 for other bytes)
+uint utf8CharLength(uint8 c) {
+	if (c >= 0xC2 && c <= 0xDF)
+		return 2;
+	if (c >= 0xE0 && c <= 0xEF)
+		return 3;
+	if (c >= 0xF0 && c <= 0xF4)
+		return 4;
+	return 1;
+}
+
+bool hasTextAt(const Common::String &text, uint pos, const Common::String &part) {
+	return text.size() - pos >= part.size() && !strncmp(text.c_str() + pos, part.c_str(), part.size());
+}
+
 } // End of anonymous namespace
 
-TranslationCatalog::TranslationCatalog() : _skipped(0) {
+TranslationCatalog::TranslationCatalog() : _skipped(0), _termCount(0) {
 }
 
 void TranslationCatalog::clear() {
 	_entries.clear();
 	_templates.clear();
 	_barkContexts.clear();
+	_terms.clear();
+	_termCount = 0;
 	_skipped = 0;
 	_language.clear();
 }
@@ -100,7 +117,7 @@ Common::String TranslationCatalog::canonicalParam(const Common::String &name) {
 
 bool TranslationCatalog::canonicalContext(const Common::String &context, Common::String &canonical) {
 	uint16 classId = 0, ip = 0;
-	if (context == "ui") {
+	if (context == "ui" || context == "term") {
 		canonical = context;
 		return true;
 	}
@@ -302,6 +319,63 @@ uint TranslationCatalog::readingLength(const Common::String &text, uint start, u
 	return length;
 }
 
+void TranslationCatalog::addTerm(const Common::String &text, const Common::String &english) {
+	Common::String first = text.substr(0, utf8CharLength(text[0]));
+	Common::Array<Term> &list = _terms[first];
+	for (const Term &t : list) {
+		if (t._text == text)
+			return;     // the same name twice: the first one counts
+	}
+	// longest first, so that a longer name wins over a name inside it
+	uint pos = 0;
+	while (pos < list.size() && list[pos]._text.size() >= text.size())
+		pos++;
+	Term term;
+	term._text = text;
+	term._english = english;
+	list.insert_at(pos, term);
+	_termCount++;
+}
+
+Common::String TranslationCatalog::annotateTerms(const Common::String &text,
+		Common::HashMap<Common::String, bool> &shown) const {
+	if (_terms.empty())
+		return text;
+
+	Common::String out;
+	uint i = 0;
+	while (i < text.size()) {
+		uint n = MIN<uint>(utf8CharLength(text[i]), text.size() - i);
+		const Term *found = nullptr;
+		TermMap::const_iterator it = _terms.find(text.substr(i, n));
+		if (it != _terms.end()) {
+			for (const Term &t : it->_value) {
+				if (hasTextAt(text, i, t._text)) {
+					found = &t;
+					break;
+				}
+			}
+		}
+		if (!found) {
+			out += text.substr(i, n);
+			i += n;
+			continue;
+		}
+
+		out += found->_text;
+		i += found->_text.size();
+		if (found->_english.empty() || shown.contains(found->_text))
+			continue;
+		shown[found->_text] = true;
+		// the translator may have written the English already
+		Common::String paren = "(" + found->_english + ")";
+		Common::String fullWidthParen = "\xEF\xBC\x88" + found->_english + "\xEF\xBC\x89";
+		if (!hasTextAt(text, i, paren) && !hasTextAt(text, i, fullWidthParen))
+			out += paren;
+	}
+	return out;
+}
+
 void TranslationCatalog::listEntries(Common::Array<Entry> &entries) const {
 	entries.clear();
 	for (EntryMap::const_iterator it = _entries.begin(); it != _entries.end(); ++it) {
@@ -359,6 +433,17 @@ void TranslationCatalog::addEntry(const Common::String &key, const Common::Strin
 		warning("[U8-L10N] %s: %s: translation is not valid UTF-8, skipped", name.c_str(),
 		        context.c_str());
 		_skipped++;
+		return;
+	}
+
+	if (context == "term") {
+		// a name in the translations (UTF-8) and the English shown with it
+		if (!isValidUTF8(source)) {
+			warning("[U8-L10N] %s: term is not valid UTF-8, skipped", name.c_str());
+			_skipped++;
+			return;
+		}
+		addTerm(source, translation == "-" ? Common::String() : translation);
 		return;
 	}
 

@@ -120,6 +120,17 @@ public:
 	static uint readingLength(const Common::String &text, uint start = 0,
 	                          uint end = 0xFFFFFFFF);
 
+	/**
+	 * Add the English after the names ("term" entries) that text shows for
+	 * the first time: <name> -> <name>(Britannia). A name is matched
+	 * longest first, so a longer name ("term" entry with English "-": no
+	 * annotation) protects the names inside it.
+	 * \param shown names already annotated (in this conversation); updated
+	 */
+	Common::String annotateTerms(const Common::String &text,
+	                             Common::HashMap<Common::String, bool> &shown) const;
+	uint termCount() const { return _termCount; }
+
 	struct Entry {
 		Common::String _context;
 		Common::String _source;
@@ -157,6 +168,15 @@ private:
 	};
 	typedef Common::HashMap<Common::String, Common::Array<Template> > TemplateMap;
 
+	struct Term {
+		Common::String _text;     //!< the name in the translations
+		Common::String _english;  //!< shown with it; empty: never annotated
+	};
+	//! first UTF-8 character -> the names starting with it, longest first
+	typedef Common::HashMap<Common::String, Common::Array<Term> > TermMap;
+
+	void addTerm(const Common::String &text, const Common::String &english);
+
 	void addEntry(const Common::String &key, const Common::String &translation,
 	              const Common::String &name);
 	void parseHeader(const Common::String &header);
@@ -166,6 +186,8 @@ private:
 	EntryMap _entries;     //!< "<context>\x04<English>" -> translation
 	ContextSet _barkContexts;  //!< call sites (bark, book, ...) with at least one entry
 	TemplateMap _templates;    //!< bark call site -> its sentence templates
+	TermMap _terms;
+	uint _termCount;
 	uint _skipped;
 	Common::String _language;
 };

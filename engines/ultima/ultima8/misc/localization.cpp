@@ -30,6 +30,7 @@
 #include "ultima/ultima8/gfx/fonts/font.h"
 #include "ultima/ultima8/gfx/fonts/font_manager.h"
 #include "ultima/ultima8/kernel/kernel.h"
+#include "ultima/ultima8/kernel/process.h"
 #include "ultima/ultima8/usecode/uc_process.h"
 
 namespace Ultima {
@@ -70,11 +71,12 @@ uint layoutPages(Font *font, const Common::String &text, int32 width, int32 heig
 
 Localization *Localization::_instance = nullptr;
 
-Localization::Localization() : _catalogLoaded(false), _fontReady(false) {
+Localization::Localization() : _catalogLoaded(false), _fontReady(false), _annotate(true) {
 	_instance = this;
 
 	ConfMan.registerDefault("localization", "off");
 	ConfMan.registerDefault("localization_measure", false);
+	ConfMan.registerDefault("localization_annotate", true);
 }
 
 Localization::~Localization() {
@@ -93,6 +95,9 @@ void Localization::configure(bool supportedGame) {
 		        language.c_str());
 		language.clear();
 	}
+
+	_annotate = ConfMan.getBool("localization_annotate");
+	_shownTerms.clear();
 
 	Common::String file;
 	if (!language.empty()) {
@@ -171,7 +176,44 @@ Common::String Localization::translateBark(const Common::String &source) const {
 		debugC(1, kDebugLocalization, "[U8-L10N] bark without usecode process src=\"%s\"", source.c_str());
 		return source;
 	}
-	return translate(TranslationCatalog::barkContext(proc->getClassId(), proc->getIp()), source);
+	Common::String translation = translate(
+		TranslationCatalog::barkContext(proc->getClassId(), proc->getIp()), source);
+	if (translation != source)
+		translation = annotate(translation, proc);
+	return translation;
+}
+
+Common::String Localization::annotate(const Common::String &text, Process *conversation) const {
+	if (!_annotate)
+		return text;
+	if (!conversation) {
+		Common::HashMap<Common::String, bool> shown;
+		return _catalog.annotateTerms(text, shown);
+	}
+
+	// A conversation is one usecode process: forget the names shown in
+	// processes that have ended
+	Kernel *kernel = Kernel::get_instance();
+	for (uint i = 0; i < _shownTerms.size();) {
+		Process *p = kernel->getProcess(_shownTerms[i]._pid);
+		if (p != _shownTerms[i]._process || p->is_terminated())
+			_shownTerms.remove_at(i);
+		else
+			i++;
+	}
+	ShownTerms *entry = nullptr;
+	for (ShownTerms &s : _shownTerms) {
+		if (s._process == conversation)
+			entry = &s;
+	}
+	if (!entry) {
+		ShownTerms s;
+		s._pid = conversation->getPid();
+		s._process = conversation;
+		_shownTerms.push_back(s);
+		entry = &_shownTerms.back();
+	}
+	return _catalog.annotateTerms(text, entry->_shown);
 }
 
 Common::String Localization::translateCallSite(const char *kind, const Common::String &source,
@@ -189,6 +231,8 @@ Common::String Localization::translateCallSite(const char *kind, const Common::S
 			warning("[U8-L10N] font %d cannot show localized text, showing English", fontnum);
 			return source;
 		}
+		// each book, scroll, ... introduces its names again
+		translation = annotate(translation, nullptr);
 	}
 	return translation;
 }
@@ -260,6 +304,9 @@ void Localization::measureCatalog() const {
 		if (!strcmp(box->_kind, "ask")) {
 			source = "@ " + source;
 			translation = "@ " + translation;
+		} else {
+			// as if each name in it were shown for the first time
+			translation = annotate(translation, nullptr);
 		}
 		Font *original = fm->getGameFont(box->_font, false);
 		Font *localized = fm->getGameFont(box->_font, true);
@@ -292,7 +339,9 @@ Common::String Localization::dumpInfo() const {
 	info += Common::String::format("Catalog: %s, %s", _file.c_str(),
 	                               _catalogLoaded ? "loaded" : "not loaded");
 	if (_catalogLoaded)
-		info += Common::String::format(", %u entries, %u skipped", _catalog.size(), _catalog.skipped());
+		info += Common::String::format(", %u entries, %u skipped, %u names (%s)", _catalog.size(),
+		                               _catalog.skipped(), _catalog.termCount(),
+		                               _annotate ? "annotated" : "not annotated");
 	info += Common::String::format("\nCJK font: %s\n", _fontReady ? "ready" : "not loaded");
 	return info;
 }

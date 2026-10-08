@@ -289,6 +289,41 @@ public:
 		TS_ASSERT_EQUALS(TranslationCatalog::readingLength("abc", 1), 2u);
 	}
 
+	// Names get their English the first time they are shown
+	void test_annotate_terms() {
+#define T_A "\xE7\x94\xB2"      // two names: A B = "Alpha", B = "Beta",
+#define T_B "\xE4\xB9\x99"      // A B C = a longer name without annotation
+#define T_C "\xE4\xB8\x99"
+#define T_COMMA "\xEF\xBC\x8C"
+		Common::Array<MOEntry> e;
+		e.push_back(MOEntry(key("term", T_A T_B), "Alpha"));
+		e.push_back(MOEntry(key("term", T_A T_B T_C), "-"));
+		e.push_back(MOEntry(key("term", T_B), "Beta"));
+		e.push_back(MOEntry(key("term", "\xE4"), "Broken"));    // not UTF-8
+		TranslationCatalog cat;
+		TS_ASSERT(loadMO(cat, buildMO(e)));
+		TS_ASSERT_EQUALS(cat.termCount(), 3u);
+		TS_ASSERT_EQUALS(cat.skipped(), 1u);
+		TS_ASSERT_EQUALS(cat.size(), 0u);     // terms are not translations
+
+		Common::HashMap<Common::String, bool> shown;
+		TS_ASSERT_EQUALS(cat.annotateTerms(T_A T_B T_COMMA T_A T_B T_C T_COMMA T_B T_COMMA T_A T_B, shown),
+		                 T_A T_B "(Alpha)" T_COMMA T_A T_B T_C T_COMMA T_B "(Beta)" T_COMMA T_A T_B);
+		// the same conversation: already shown
+		TS_ASSERT_EQUALS(cat.annotateTerms(T_B T_A T_B, shown), T_B T_A T_B);
+		// a new one; English already written by the translator is not repeated
+		Common::HashMap<Common::String, bool> other;
+		TS_ASSERT_EQUALS(cat.annotateTerms(T_A T_B "(Alpha)" T_B, other), T_A T_B "(Alpha)" T_B "(Beta)");
+		TS_ASSERT(other.contains(T_A T_B));
+		// text without names, English text
+		TS_ASSERT_EQUALS(cat.annotateTerms("Hello there. ", other), "Hello there. ");
+		TS_ASSERT_EQUALS(cat.annotateTerms("", other), "");
+#undef T_A
+#undef T_B
+#undef T_C
+#undef T_COMMA
+	}
+
 	// A sentence combined from pieces (FIREITEM): several templates of one
 	// call site match; the one with the most fixed text wins
 	void test_part_templates() {
