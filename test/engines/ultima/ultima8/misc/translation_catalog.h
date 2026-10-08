@@ -289,6 +289,23 @@ public:
 		TS_ASSERT_EQUALS(TranslationCatalog::readingLength("abc", 1), 2u);
 	}
 
+	// Answers built with the player's name ("I am " + name + ".")
+	void test_answer_template() {
+		Common::Array<MOEntry> e;
+		e.push_back(MOEntry(key("ask 0404", "I am {name}."), "X{name}Y"));
+		e.push_back(MOEntry(key("ask 0404", "Bye "), "B"));
+		TranslationCatalog cat;
+		TS_ASSERT(loadMO(cat, buildMO(e)));
+		Common::String t;
+		TS_ASSERT_EQUALS(cat.lookup("ask 0404", "I am Pman.", t), TranslationCatalog::kHit);
+		TS_ASSERT_EQUALS(t, "XPmanY");
+		TS_ASSERT_EQUALS(cat.lookup("ask 0404", "Bye ", t), TranslationCatalog::kHit);
+		TS_ASSERT_EQUALS(t, "B");
+		TS_ASSERT_EQUALS(cat.lookup("ask 0404", "I am the Avatar! ", t), TranslationCatalog::kMiss);
+		// answers are per class
+		TS_ASSERT_EQUALS(cat.lookup("ask 0408", "I am Pman.", t), TranslationCatalog::kMiss);
+	}
+
 	// Names get their English the first time they are shown
 	void test_annotate_terms() {
 #define T_A "\xE7\x94\xB2"      // two names: A B = "Alpha", B = "Beta",

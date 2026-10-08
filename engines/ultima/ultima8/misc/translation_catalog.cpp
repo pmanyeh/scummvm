@@ -457,9 +457,10 @@ void TranslationCatalog::addEntry(const Common::String &key, const Common::Strin
 		return;
 	}
 
-	// A sentence template: the translation must use the same placeholders
+	// A sentence template (a line, or an answer with the player's name):
+	// the translation must use the same placeholders
 	Common::Array<Common::String> sourceNames, translationNames;
-	bool isTemplate = context.hasPrefix("bark ") && source.contains('{');
+	bool isTemplate = (context.hasPrefix("bark ") || context.hasPrefix("ask ")) && source.contains('{');
 	if (isTemplate) {
 		bool ok = placeholders(source, sourceNames) && placeholders(translation, translationNames);
 		for (uint i = 0; ok && i < sourceNames.size(); i++)
@@ -594,8 +595,8 @@ bool TranslationCatalog::lookupTemplate(const Common::String &context, const Com
 	if (t == _templates.end())
 		return false;
 
-	// Parameters belong to the class of the bark ("bark CCCC:IIII")
-	Common::String paramPrefix = "param " + context.substr(5, 4) + ":";
+	// Parameters belong to the class ("bark CCCC:IIII", "ask CCCC")
+	Common::String paramPrefix = "param " + context.substr(context.findFirstOf(' ') + 1, 4) + ":";
 
 	// If several templates match, the one with the most fixed text is the
 	// most specific ("{part1}of {part2}" vs "{part1}of {part2}with {num} uses")
