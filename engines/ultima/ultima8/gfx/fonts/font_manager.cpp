@@ -143,9 +143,15 @@ bool FontManager::addTTFOverride(unsigned int fontnum, const Common::Path &filen
 
 bool FontManager::addCJKOverride(unsigned int fontnum, const Common::Path &filename,
 								 int pointsize, uint32 rgb, int bordersize,
-								 bool antialiasing) {
-	return addTTFOverride(fontnum, filename, pointsize, rgb, bordersize,
-	                      antialiasing, false, true);
+								 bool antialiasing, int letterSpacing,
+								 int cjkLatinSpacing, int lineSpacing) {
+	if (!addTTFOverride(fontnum, filename, pointsize, rgb, bordersize,
+	                    antialiasing, false, true))
+		return false;
+	TTFont *font = dynamic_cast<TTFont *>(_overrides[fontnum]);
+	if (font)
+		font->setSpacing(letterSpacing, cjkLatinSpacing, lineSpacing);
+	return true;
 }
 
 bool FontManager::addTTFOverride(unsigned int fontnum, const Common::Path &filename,

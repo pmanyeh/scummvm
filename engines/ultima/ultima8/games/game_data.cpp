@@ -410,6 +410,11 @@ bool GameData::setupCJKOverrides() {
 	const Common::Path filename(file);
 	int pointsize = ConfMan.hasKey("font_cjk_size") ? ConfMan.getInt("font_cjk_size") : 12;
 	bool antialiasing = ConfMan.hasKey("font_cjk_antialiasing") && ConfMan.getBool("font_cjk_antialiasing");
+	// extra spacing in pixels: between characters, between CJK and Latin
+	// letters / digits, between lines
+	int letterSpacing = ConfMan.hasKey("font_cjk_letter_spacing") ? ConfMan.getInt("font_cjk_letter_spacing") : 0;
+	int latinSpacing = ConfMan.hasKey("font_cjk_latin_spacing") ? ConfMan.getInt("font_cjk_latin_spacing") : 0;
+	int lineSpacing = ConfMan.hasKey("font_cjk_line_spacing") ? ConfMan.getInt("font_cjk_line_spacing") : 0;
 
 	ConfigFileManager *config = ConfigFileManager::get_instance();
 	FontManager *fontmanager = FontManager::get_instance();
@@ -429,7 +434,8 @@ bool GameData::setupCJKOverrides() {
 
 		uint32 col32 = strtol(vals[2].c_str(), 0, 0);
 		int border = atoi(vals[3].c_str());
-		if (!fontmanager->addCJKOverride(fontnum, filename, pointsize, col32, border, antialiasing)) {
+		if (!fontmanager->addCJKOverride(fontnum, filename, pointsize, col32, border, antialiasing,
+		                                 letterSpacing, latinSpacing, lineSpacing)) {
 			warning("failed to setup CJK font %s for font %d", filename.toString().c_str(), fontnum);
 			ok = false;
 			break;

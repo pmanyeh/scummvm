@@ -44,6 +44,10 @@ class Process;
  *   font_cjk_file         UTF-8 font used while localized (default Cubic_11.ttf)
  *   font_cjk_size         point size (default 12)
  *   font_cjk_antialiasing default false (pixel font)
+ *   font_cjk_letter_spacing extra pixels between characters (default 0)
+ *   font_cjk_latin_spacing  extra pixels between a CJK character and a
+ *                           Latin letter or digit (default 0)
+ *   font_cjk_line_spacing   extra pixels between lines (default 0)
  *
  * Localization is only active for English Ultima VIII, with a catalog that
  * loaded and a CJK font that loaded for every overridden game font. In every

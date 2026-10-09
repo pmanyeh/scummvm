@@ -35,6 +35,7 @@ static const uint16 BULLETS[] = { 0x2022, 0x30FB, 0x25CF, 0 };
 TTFont::TTFont(Graphics::Font *font, uint32 rgb, int borderSize,
 		bool antiAliased, bool SJIS, bool utf8) :
 		_borderSize(borderSize), _ttfFont(font), _antiAliased(antiAliased), _SJIS(SJIS), _utf8(utf8),
+		_letterSpacing(0), _cjkLatinSpacing(0), _lineSpacing(0),
 		_PF_RGBA(Graphics::PixelFormat(4, 8, 8, 8, 8, 24, 16, 8, 0)) {
 	_color = _PF_RGBA.RGBToColor((rgb >> 16) & 0xFF, (rgb >> 8) & 0xff, rgb & 0xff);
 
@@ -69,7 +70,62 @@ int TTFont::getBaseline() {
 
 int TTFont::getBaselineSkip() {
 	// TODO: Come up with something more generic than just hardcoding 2 pixel line separation
-	return getHeight() + 2;
+	return getHeight() + 2 + _lineSpacing;
+}
+
+bool TTFont::isCJK(uint32 c) {
+	return (c >= 0x3040 && c <= 0x30FF) ||    // hiragana, katakana
+	       (c >= 0x3400 && c <= 0x4DBF) ||    // CJK extension A
+	       (c >= 0x4E00 && c <= 0x9FFF) ||    // CJK unified ideographs
+	       (c >= 0xAC00 && c <= 0xD7AF) ||    // hangul
+	       (c >= 0xF900 && c <= 0xFAFF) ||    // CJK compatibility ideographs
+	       (c >= 0x20000 && c <= 0x3FFFF);    // CJK extensions B and later
+}
+
+bool TTFont::isLatinAlnum(uint32 c) {
+	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+	       (c >= 0xC0 && c <= 0x24F && c != 0xD7 && c != 0xF7);  // Latin-1 and Extended-A/B letters
+}
+
+int TTFont::spacingBetween(uint32 a, uint32 b) const {
+	int extra = _letterSpacing;
+	if ((isCJK(a) && isLatinAlnum(b)) || (isLatinAlnum(a) && isCJK(b)))
+		extra += _cjkLatinSpacing;
+	return extra;
+}
+
+int TTFont::textWidth(const Common::U32String &text) const {
+	if (!hasSpacing())
+		return _ttfFont->getStringWidth(text);
+
+	// the same advances as Graphics::Font::getStringWidth, plus the spacing
+	int width = 0;
+	uint32 last = 0;
+	for (uint i = 0; i < text.size(); ++i) {
+		uint32 c = text[i];
+		width += _ttfFont->getKerningOffset(last, c);
+		if (i > 0)
+			width += spacingBetween(last, c);
+		width += _ttfFont->getCharWidth(c);
+		last = c;
+	}
+	return width;
+}
+
+void TTFont::drawSpaced(Graphics::ManagedSurface &surf, const Common::U32String &text, uint32 color) const {
+	int x = 0;
+	uint32 last = 0;
+	for (uint i = 0; i < text.size(); ++i) {
+		uint32 c = text[i];
+		x += _ttfFont->getKerningOffset(last, c);
+		if (i > 0)
+			x += spacingBetween(last, c);
+		if (x >= surf.w)
+			break;
+		_ttfFont->drawChar(&surf, c, x, 0, color);
+		x += _ttfFont->getCharWidth(c);
+		last = c;
+	}
 }
 
 template<class T>
@@ -103,7 +159,7 @@ void TTFont::getStringSize(const Common::String &text, int32 &width, int32 &heig
 	else
 		unicodeText = toUnicode<SJISTraits>(text, _bullet);
 
-	width = _ttfFont->getStringWidth(unicodeText);
+	width = textWidth(unicodeText);
 	height = _ttfFont->getFontHeight();
 
 	width += 2 * _borderSize;
@@ -239,11 +295,17 @@ RenderedText *TTFont::renderText(const Common::String &text, unsigned int &remai
 			// When not in antialiased mode, use a paletted surface where '1' is
 			// used for pixels of the text
 			textSurf.create(resultWidth, lineHeight, Graphics::PixelFormat::createFormatCLUT8());
-			_ttfFont->drawString(&textSurf, unicodeText, 0, 0, resultWidth, 1);
+			if (hasSpacing())
+				drawSpaced(textSurf, unicodeText, 1);
+			else
+				_ttfFont->drawString(&textSurf, unicodeText, 0, 0, resultWidth, 1);
 		} else {
 			// Use a high color surface with the specified _color color for text
 			textSurf.create(resultWidth, lineHeight, _PF_RGBA);
-			_ttfFont->drawString(&textSurf, unicodeText, 0, 0, resultWidth, _color);
+			if (hasSpacing())
+				drawSpaced(textSurf, unicodeText, _color);
+			else
+				_ttfFont->drawString(&textSurf, unicodeText, 0, 0, resultWidth, _color);
 		};
 
 		// Add border within radius. Pixels on the edge are alpha blended if antialiased
@@ -307,7 +369,7 @@ RenderedText *TTFont::renderText(const Common::String &text, unsigned int &remai
 			else
 				unicodeBefore = toUnicode<SJISTraits>(before, _bullet);
 
-			int w = _ttfFont->getStringWidth(unicodeBefore);
+			int w = textWidth(unicodeBefore);
 
 			// The cursor can be just past the end of the line or below a
 			// box lower than the font: stay inside the texture

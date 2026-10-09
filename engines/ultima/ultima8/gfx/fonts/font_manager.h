@@ -111,9 +111,12 @@ public:
 
 	//! override a game font with a TTF that renders UTF-8 text (CJK).
 	//! Antialiasing is set per font so pixel fonts can turn it off.
+	//! letterSpacing, cjkLatinSpacing, lineSpacing: extra pixels between
+	//! characters, between CJK and Latin letters / digits, between lines
 	bool addCJKOverride(unsigned int fontnum, const Common::Path &filename,
 	                    int pointsize, uint32 rgb, int bordersize,
-	                    bool antialiasing);
+	                    bool antialiasing, int letterSpacing = 0,
+	                    int cjkLatinSpacing = 0, int lineSpacing = 0);
 
 	//! remove the override of a game font
 	void removeOverride(unsigned int fontnum) {
