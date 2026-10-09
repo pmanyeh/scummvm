@@ -192,7 +192,7 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 			_s("High-resolution Chinese text (\xE9\xAB\x98\xE8\xA7\xA3\xE6\x9E\x90\xE4\xB8\xAD\xE6\x96\x87\xE5\xAD\x97)"),
 			_s("Draws the Chinese text at the resolution of the window instead of the game's 320x200. Takes effect when the game is started."),
 			"hd_text",
-			false,
+			true,
 			0,
 			0
 		}

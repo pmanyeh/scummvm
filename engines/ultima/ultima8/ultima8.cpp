@@ -847,7 +847,7 @@ Common::Error Ultima8Engine::changeVideoMode(int width, int height) {
 bool Ultima8Engine::getHDTextSize(int width, int height, int &hdWidth, int &hdHeight) const {
 	// The game keeps its resolution; only text in high-res fonts (the
 	// localized CJK fonts) is drawn at the window resolution
-	ConfMan.registerDefault("hd_text", false);
+	ConfMan.registerDefault("hd_text", true);
 	if (!GAME_IS_U8 || !ConfMan.getBool("hd_text"))
 		return false;
 

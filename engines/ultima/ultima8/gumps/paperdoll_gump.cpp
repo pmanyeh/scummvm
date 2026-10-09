@@ -195,7 +195,9 @@ void PaperdollGump::PaintComposited(RenderSurface *surf, int32 lerp_factor, int3
 	for (unsigned int n = 0; n < 7; ++n) { // constant!
 		if (!_hdLabels[n])
 			continue;
-		int32 x = statcoords[n].xd, y = statcoords[n].y;
+		// CJK characters reach below the baseline of the Latin letters:
+		// raised one pixel to line up with the numbers
+		int32 x = statcoords[n].xd, y = statcoords[n].y - 1;
 		GumpToScreenSpace(x, y);
 		_hdLabels[n]->draw(surf, ScaleCoord(x, sx), ScaleCoord(y, sy));
 	}
