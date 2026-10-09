@@ -169,7 +169,7 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 			_s("Traditional Chinese translation (\xE7\xB9\x81\xE9\xAB\x94\xE4\xB8\xAD\xE6\x96\x87)"),
 			_s("Shows the game text in Traditional Chinese (English version of the game only)."),
 			"localization_zh_tw",
-			false,
+			true,
 			0,
 			0
 		}

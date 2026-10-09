@@ -86,17 +86,28 @@ Localization::~Localization() {
 
 void Localization::configure(bool supportedGame) {
 	// The game option checkbox (localization_zh_tw) decides once it has
-	// been set; before that the localization setting does (default off)
-	Common::String language = ConfMan.get("localization");
-	if (ConfMan.hasKey("localization_zh_tw"))
+	// been set, else the localization setting; with neither, this
+	// Traditional Chinese edition of the engine shows Chinese (the
+	// checkbox is checked by default)
+	Common::String language;
+	bool requested = true;
+	if (ConfMan.hasKey("localization_zh_tw")) {
 		language = ConfMan.getBool("localization_zh_tw") ? "zh_TW" : "off";
+	} else if (ConfMan.hasKey("localization")) {
+		language = ConfMan.get("localization");
+	} else {
+		language = "zh_TW";
+		requested = false;
+	}
 	language.trim();
 	if (language.empty() || language.equalsIgnoreCase("off"))
 		language.clear();
 
 	if (!language.empty() && !supportedGame) {
-		warning("[U8-L10N] localization %s is only available for the English version of Ultima VIII",
-		        language.c_str());
+		// only an explicit setting is worth a warning
+		if (requested)
+			warning("[U8-L10N] localization %s is only available for the English version of Ultima VIII",
+			        language.c_str());
 		language.clear();
 	}
 

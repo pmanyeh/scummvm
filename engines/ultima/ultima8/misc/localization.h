@@ -39,9 +39,10 @@ class Process;
  * that is drawn is replaced.
  *
  * Game-domain configuration:
- *   localization          off (default) or a language, e.g. zh_TW
+ *   localization          off or a language, e.g. zh_TW
  *   localization_zh_tw    game option checkbox; once set it decides
- *                         (true: zh_TW, false: off) over localization
+ *                         (true: zh_TW, false: off) over localization.
+ *                         With neither setting this edition uses zh_TW.
  *   localization_annotate game option: English after names (default true)
  *   localization_file     compiled catalog (default u8_<language>.mo)
  *   font_cjk_file         UTF-8 font used while localized (default Cubic_11.ttf)
