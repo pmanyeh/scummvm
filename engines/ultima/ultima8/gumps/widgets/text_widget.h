@@ -111,6 +111,16 @@ protected:
 
 	Font *getFont() const;
 
+	bool isHighResText() const;
+	//! Convert from font pixels to game pixels
+	int32 textToGameX(int32 v) const;
+	int32 textToGameY(int32 v) const;
+	//! The target size in font pixels
+	int32 textTargetWidth() const;
+	int32 textTargetHeight() const;
+	//! Set the dims from the text size (_tx, _ty)
+	void setTextDims(Font *font);
+
 public:
 	bool loadData(Common::ReadStream *rs, uint32 version);
 	void saveData(Common::WriteStream *ws) override;

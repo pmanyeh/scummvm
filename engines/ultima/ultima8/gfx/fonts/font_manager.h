@@ -70,13 +70,15 @@ private:
 	Graphics::Font *getTTF_Font(const Common::Path &filename, int pointsize, bool antialiasing);
 
 	//! Override fontnum with specified font
-	void setOverride(unsigned int fontnum, Font *newFont);
+	void setOverride(unsigned int fontnum, Font *newFont, bool hd = false);
 
 	bool addTTFOverride(unsigned int fontnum, const Common::Path &filename,
 	                    int pointsize, uint32 rgb, int bordersize,
-	                    bool antialiasing, bool SJIS, bool utf8);
+	                    bool antialiasing, bool SJIS, bool utf8, bool hd = false);
 
 	Common::Array<Font *> _overrides;
+	//! Overrides for text drawn at the window resolution (high-res text layer)
+	Common::Array<Font *> _hdOverrides;
 
 	Common::Array<Font *> _ttFonts;
 
@@ -92,8 +94,9 @@ public:
 	//! get a Font by fontnum (for game fonts)
 	//! \param fontnum the number of the font
 	//! \param allowOverride if true, allow an override font to be used
+	//! \param hd if true, prefer the override for the high-res text layer
 	Font *getGameFont(unsigned int fontnum,
-	                             bool allowOverride = false);
+	                             bool allowOverride = false, bool hd = false);
 
 	//! get a TTF font (for non-game fonts)
 	Font *getTTFont(unsigned int ttfnum);
@@ -113,14 +116,17 @@ public:
 	//! Antialiasing is set per font so pixel fonts can turn it off.
 	//! letterSpacing, cjkLatinSpacing, lineSpacing: extra pixels between
 	//! characters, between CJK and Latin letters / digits, between lines
+	//! hd: the font for the high-res text layer, in window pixels
 	bool addCJKOverride(unsigned int fontnum, const Common::Path &filename,
 	                    int pointsize, uint32 rgb, int bordersize,
 	                    bool antialiasing, int letterSpacing = 0,
-	                    int cjkLatinSpacing = 0, int lineSpacing = 0);
+	                    int cjkLatinSpacing = 0, int lineSpacing = 0,
+	                    bool hd = false);
 
 	//! remove the override of a game font
 	void removeOverride(unsigned int fontnum) {
 		setOverride(fontnum, nullptr);
+		setOverride(fontnum, nullptr, true);
 	}
 
 	//! override a game font with a Japanese font.

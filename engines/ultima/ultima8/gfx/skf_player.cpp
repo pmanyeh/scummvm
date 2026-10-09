@@ -68,7 +68,7 @@ SKFPlayer::SKFPlayer(Common::SeekableReadStream *rs, int width, int height, bool
 	: _width(width), _height(height), _curFrame(0), _curObject(0), _curAction(0),
 	  _curEvent(0), _playing(false), _timer(0), _frameRate(15), _fadeColour(0),
 	  _fadeLevel(0), _buffer(nullptr), _subs(nullptr), _introMusicHack(introMusicHack),
-	  _lastUpdate(0), _subtitleY(0) {
+	  _lastUpdate(0), _subtitleY(0), _subsHighRes(false) {
 	_skf = new RawArchive(rs);
 	Common::ReadStream *eventlist = _skf->get_datasource(0);
 	if (!eventlist) {
@@ -126,15 +126,29 @@ void SKFPlayer::paint(RenderSurface *surf, int /*lerp*/) {
 	if (!_fadeLevel) {
 		Common::Rect srcRect(_width, _height);
 		surf->Blit(*_buffer->getRawSurface(), srcRect, 0, 0);
-		if (_subs)
+		if (_subs && !_subsHighRes)
 			_subs->draw(surf, 60, _subtitleY);
 	} else {
 		uint32 fade = TEX32_PACK_RGBA(_fadeColour, _fadeColour, _fadeColour,
 		                              (_fadeLevel * 255) / FADESTEPS);
 		Common::Rect srcRect(_width, _height);
 		surf->FadedBlit(*_buffer->getRawSurface(), srcRect, 0, 0, fade);
-		if (_subs)
+		if (_subs && !_subsHighRes)
 			_subs->drawBlended(surf, 60, _subtitleY, fade);
+	}
+}
+
+void SKFPlayer::paintComposited(RenderSurface *surf, int32 x, int32 y, int32 sx, int32 sy) {
+	if (!_buffer || !_subs || !_subsHighRes) return;
+
+	x += (60 * sx + 0x8000) >> 16;
+	y += (_subtitleY * sy + 0x8000) >> 16;
+	if (!_fadeLevel) {
+		_subs->draw(surf, x, y);
+	} else {
+		uint32 fade = TEX32_PACK_RGBA(_fadeColour, _fadeColour, _fadeColour,
+		                              (_fadeLevel * 255) / FADESTEPS);
+		_subs->drawBlended(surf, x, y, fade);
 	}
 }
 
@@ -178,7 +192,10 @@ void SKFPlayer::run() {
 	}
 
 	Font *redfont;
-	redfont = FontManager::get_instance()->getGameFont(6, true);
+	Ultima8Engine *engine = Ultima8Engine::get_instance();
+	redfont = FontManager::get_instance()->getGameFont(6, true, engine->isHDText());
+	// a high-res font has the pixels of the high-res text layer
+	bool highRes = engine->isHDText() && redfont->isHighRes();
 
 	AudioProcess *audioproc = AudioProcess::get_instance();
 
@@ -258,8 +275,10 @@ void SKFPlayer::run() {
 				delete _subs;
 				_subtitleY = textbuf[4] + (textbuf[5] << 8);
 				unsigned int remaining;
-				_subs = redfont->renderText(subtitle, remaining, 200, 0,
-				                           Font::TEXT_CENTER);
+				_subs = redfont->renderText(subtitle, remaining,
+				                            highRes ? engine->gameToHDX(200) : 200, 0,
+				                            Font::TEXT_CENTER);
+				_subsHighRes = highRes;
 			}
 			delete textbuf;
 

@@ -43,6 +43,7 @@
 #include "ultima/ultima8/world/actors/npc_dat.h"
 #include "ultima/ultima8/world/fire_type_table.h"
 #include "ultima/ultima8/world/map_glob.h"
+#include "ultima/ultima8/ultima8.h"
 
 namespace Ultima {
 namespace Ultima8 {
@@ -441,6 +442,10 @@ bool GameData::setupCJKOverrides() {
 			break;
 		}
 		replaced.push_back(fontnum);
+
+		if (Ultima8Engine::get_instance()->isHDText())
+			setupHDCJKOverride(fontnum, filename, pointsize, col32, border,
+			                   letterSpacing, latinSpacing, lineSpacing);
 	}
 
 	if (ok && !replaced.empty())
@@ -450,6 +455,42 @@ bool GameData::setupCJKOverrides() {
 		fontmanager->removeOverride(fontnum);
 	setupTTFOverrides("game", false);
 	return false;
+}
+
+// A setting of the high-res CJK font, in game pixels (decimals allowed)
+static double hdFontSetting(const char *key, double def) {
+	if (!ConfMan.hasKey(key) || ConfMan.get(key).empty())
+		return def;
+	return atof(ConfMan.get(key).c_str());
+}
+
+// The CJK font for the high-res text layer, which draws in window pixels.
+// Its settings (font_cjk_hd_*) are in game pixels like the others, so they
+// do not depend on the window size; by default the same as the game font's.
+void GameData::setupHDCJKOverride(int fontnum, const Common::Path &filename, int pointsize,
+		uint32 col32, int border, int letterSpacing, int latinSpacing, int lineSpacing) {
+	Ultima8Engine *engine = Ultima8Engine::get_instance();
+	// game pixels to window pixels
+	const double sx = engine->getHDScaleX() / 65536.0;
+	const double sy = engine->getHDScaleY() / 65536.0;
+
+	Common::Path hdFilename = filename;
+	if (ConfMan.hasKey("font_cjk_hd_file") && !ConfMan.get("font_cjk_hd_file").empty())
+		hdFilename = Common::Path(ConfMan.get("font_cjk_hd_file"));
+	bool antialiasing = !ConfMan.hasKey("font_cjk_hd_antialiasing") ||
+	                    ConfMan.getBool("font_cjk_hd_antialiasing");
+	int hdSize = (int)(hdFontSetting("font_cjk_hd_size", pointsize) * sx + 0.5);
+	// a border of a whole game pixel looks too heavy
+	double borderSetting = hdFontSetting("font_cjk_hd_border", border * 0.5);
+	int hdBorder = borderSetting > 0 ? MAX(1, (int)(borderSetting * sx + 0.5)) : 0;
+	int hdLetter = (int)(hdFontSetting("font_cjk_hd_letter_spacing", letterSpacing) * sx + 0.5);
+	int hdLatin = (int)(hdFontSetting("font_cjk_hd_latin_spacing", latinSpacing) * sx + 0.5);
+	// the font adds 2 pixels between lines
+	int hdLine = (int)((2 + hdFontSetting("font_cjk_hd_line_spacing", lineSpacing)) * sy + 0.5) - 2;
+
+	if (hdSize <= 0 || !FontManager::get_instance()->addCJKOverride(fontnum, hdFilename, hdSize,
+	        col32, hdBorder, antialiasing, hdLetter, hdLatin, hdLine, true))
+		warning("failed to setup high-res CJK font %s for font %d", hdFilename.toString().c_str(), fontnum);
 }
 
 void GameData::setupTTFOverrides(const char *category, bool SJIS) {

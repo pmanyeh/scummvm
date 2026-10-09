@@ -272,23 +272,19 @@ void Gump::PaintCompositing(RenderSurface *surf, int32 lerp_factor,
 	// Get Old Clipping Rect
 	Common::Rect32 old_rect = surf->getClippingRect();
 
-	// Set new clipping rect
+	// Set new clipping rect, in the pixels of the surface
 	Common::Rect32 new_rect(_dims);
 	GumpRectToScreenSpace(new_rect, ROUND_OUTSIDE);
+	new_rect = Common::Rect32(ScaleCoord(new_rect.left, sx), ScaleCoord(new_rect.top, sy),
+	                          ScaleCoord(new_rect.right, sx), ScaleCoord(new_rect.bottom, sy));
 	new_rect.clip(old_rect);
 	surf->setClippingRect(new_rect);
 
-	// Iterate all children
-	auto it = _children.reverse_begin();
-	const auto end = _children.end();
-
-	while (it != end) {
-		Gump *g = *it;
+	// Iterate all children, in painting order
+	for (auto *g : _children) {
 		// Paint if not closing
 		if (!g->IsClosing())
 			g->PaintCompositing(surf, lerp_factor, sx, sy);
-
-		--it;
 	}
 
 	// Paint This

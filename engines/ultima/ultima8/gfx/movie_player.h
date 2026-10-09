@@ -22,6 +22,8 @@
 #ifndef ULTIMA8_GFX_MOVIEPLAYER_H
 #define ULTIMA8_GFX_MOVIEPLAYER_H
 
+#include "common/scummsys.h"
+
 namespace Ultima {
 namespace Ultima8 {
 
@@ -34,6 +36,10 @@ public:
 
 	virtual void run() = 0;
 	virtual void paint(RenderSurface *surf, int lerp) = 0;
+	//! Paint the parts drawn at the window resolution (high-res text layer)
+	//! \param x, y the movie's position on surf
+	//! \param sx, sy the scale from game pixels to surf, 16.16 fixed point
+	virtual void paintComposited(RenderSurface *surf, int32 x, int32 y, int32 sx, int32 sy) {};
 
 	virtual void start() = 0;
 	virtual void stop() = 0;

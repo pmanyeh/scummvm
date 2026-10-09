@@ -122,7 +122,7 @@ Ultima8Engine::Ultima8Engine(OSystem *syst, const Ultima::UltimaGameDescription 
 		_isRunning(false),  _gameInfo(nullptr),
 		_configFileMan(nullptr), _saveCount(0), _game(nullptr), _lastError(Common::kNoError),
 		_kernel(nullptr), _objectManager(nullptr), _mouse(nullptr), _ucMachine(nullptr),
-		_screen(nullptr), _fontManager(nullptr), _localization(nullptr), _paletteManager(nullptr), _gameData(nullptr),
+		_screen(nullptr), _hdScreen(nullptr), _hdScaleX(0x10000), _hdScaleY(0x10000), _fontManager(nullptr), _localization(nullptr), _paletteManager(nullptr), _gameData(nullptr),
 		_world(nullptr), _desktopGump(nullptr), _gameMapGump(nullptr), _avatarMoverProcess(nullptr),
 		_frameSkip(false), _frameLimit(true), _interpolate(true), _animationRate(100),
 		_avatarInStasis(false), _cruStasis(false), _showEditorItems(false), _inversion(0),
@@ -146,6 +146,7 @@ Ultima8Engine::~Ultima8Engine() {
 	delete _localization;
 	delete _fontManager;
 	delete _screen;
+	delete _hdScreen;
 	delete _configFileMan;
 	delete _gameInfo;
 
@@ -691,6 +692,28 @@ Common::Error Ultima8Engine::runGame() {
 	return Common::kNoError;
 }
 
+// Scale src to the size of dst (same pixel format), nearest neighbour
+template<typename uintX>
+static void scaleNearest(const Graphics::ManagedSurface &src, Graphics::ManagedSurface &dst) {
+	Common::Array<int> xmap(dst.w);
+	for (int x = 0; x < dst.w; x++)
+		xmap[x] = x * src.w / dst.w;
+
+	int lastY = -1;
+	for (int y = 0; y < dst.h; y++) {
+		uintX *out = (uintX *)dst.getBasePtr(0, y);
+		int sy = y * src.h / dst.h;
+		if (sy == lastY) {
+			memcpy(out, dst.getBasePtr(0, y - 1), dst.w * sizeof(uintX));
+			continue;
+		}
+		const uintX *in = (const uintX *)src.getBasePtr(0, sy);
+		for (int x = 0; x < dst.w; x++)
+			out[x] = in[xmap[x]];
+		lastY = sy;
+	}
+}
+
 // Paint the _screen
 void Ultima8Engine::paint() {
 #ifdef PAINT_TIMING
@@ -725,7 +748,22 @@ void Ultima8Engine::paint() {
 	_screen->fill32(TEX32_PACK_RGB(0x10, 0xFF, 0x10), r);
 #endif
 
-	_desktopGump->Paint(_screen, _lerpFactor, false);
+	_desktopGump->Paint(_screen, _lerpFactor, _hdScreen != nullptr);
+
+	if (_hdScreen) {
+		// Scale the game to the window resolution, then draw the
+		// high-res text on top of it
+		_hdScreen->BeginPainting();
+		Graphics::ManagedSurface *src = _screen->getRawSurface();
+		Graphics::ManagedSurface *dst = _hdScreen->getRawSurface();
+		if (dst->format.bytesPerPixel == 4)
+			scaleNearest<uint32>(*src, *dst);
+		else
+			scaleNearest<uint16>(*src, *dst);
+		dst->markAllDirty();
+		_desktopGump->PaintCompositing(_hdScreen, _lerpFactor, _hdScaleX, _hdScaleY);
+		_hdScreen->EndPainting();
+	}
 #ifdef PAINT_TIMING
 	tpaint += g_system->getMillis();
 
@@ -759,12 +797,32 @@ Common::Error Ultima8Engine::changeVideoMode(int width, int height) {
 		return Common::kUnsupportedColorMode;
 	}
 
-	if (_screen)
-		delete _screen;
+	int hdWidth = 0, hdHeight = 0;
+	if (getHDTextSize(width, height, hdWidth, hdHeight)) {
+		debug(1, "High-res text layer %dx%d", hdWidth, hdHeight);
+		initGraphics(hdWidth, hdHeight, &format);
+		if (g_system->getScreenFormat() != format) {
+			warning("High-res text layer unavailable");
+			initGraphics(width, height, &format);
+			hdWidth = hdHeight = 0;
+		}
+	}
+
+	delete _screen;
+	delete _hdScreen;
+	_hdScreen = nullptr;
+	_hdScaleX = _hdScaleY = 0x10000;
 
 	// Set up blitting surface
-	Graphics::ManagedSurface *surface = new Graphics::Screen(width, height, format);
-	_screen = new RenderSurface(surface);
+	if (hdWidth) {
+		_hdScreen = new RenderSurface(new Graphics::Screen(hdWidth, hdHeight, format));
+		_screen = new RenderSurface(width, height, format);
+		_hdScaleX = (int32)(((int64)hdWidth << 16) / width);
+		_hdScaleY = (int32)(((int64)hdHeight << 16) / height);
+	} else {
+		Graphics::ManagedSurface *surface = new Graphics::Screen(width, height, format);
+		_screen = new RenderSurface(surface);
+	}
 
 	if (!_paletteManager) {
 		_paletteManager = new PaletteManager(format);
@@ -786,7 +844,56 @@ Common::Error Ultima8Engine::changeVideoMode(int width, int height) {
 	return Common::kNoError;
 }
 
-void Ultima8Engine::handleEvent(const Common::Event &event) {
+bool Ultima8Engine::getHDTextSize(int width, int height, int &hdWidth, int &hdHeight) const {
+	// The game keeps its resolution; only text in high-res fonts (the
+	// localized CJK fonts) is drawn at the window resolution
+	ConfMan.registerDefault("hd_text", false);
+	if (!GAME_IS_U8 || !ConfMan.getBool("hd_text"))
+		return false;
+
+	// hd_text_size=WxH, or else as large as the window allows
+	int w = 0, h = 0;
+	if (ConfMan.hasKey("hd_text_size")) {
+		const Common::String size = ConfMan.get("hd_text_size");
+		size_t x = size.findFirstOf('x');
+		if (x != Common::String::npos) {
+			w = atoi(size.substr(0, x).c_str());
+			h = atoi(size.substr(x + 1).c_str());
+		}
+	}
+	if (w <= 0 || h <= 0) {
+		int maxW = g_system->getOverlayWidth();
+		int maxH = g_system->getOverlayHeight();
+		// keep the shape the game would have on screen
+		int aspectH = height;
+		if (g_system->getFeatureState(OSystem::kFeatureAspectRatioCorrection) &&
+		        width == 320 && height == 200)
+			aspectH = 240;
+		if ((int64)maxW * aspectH > (int64)maxH * width) {
+			h = maxH;
+			w = (int)((int64)maxH * width / aspectH);
+		} else {
+			w = maxW;
+			h = (int)((int64)maxW * aspectH / width);
+		}
+	}
+
+	if (w < width * 2 || h < height * 2)
+		return false;
+	hdWidth = w;
+	hdHeight = h;
+	return true;
+}
+
+void Ultima8Engine::handleEvent(const Common::Event &windowEvent) {
+	// The mouse position is in window pixels with the high-res text
+	// layer; the game works in its own resolution
+	Common::Event event = windowEvent;
+	if (_hdScreen) {
+		event.mouse.x = (int16)(((int32)event.mouse.x << 16) / _hdScaleX);
+		event.mouse.y = (int16)(((int32)event.mouse.y << 16) / _hdScaleY);
+	}
+
 	// Handle the fact that we can get 2 modals stacking.
 	// We want the focussed one preferably.
 	Gump *modal = dynamic_cast<ModalGump *>(_desktopGump->GetFocusChild());
@@ -1857,7 +1964,8 @@ uint32 Ultima8Engine::I_moveKeyDownRecently(const uint8 *args, unsigned int /*ar
 }
 
 Graphics::Screen *Ultima8Engine::getScreen() const {
-	Graphics::Screen *scr = dynamic_cast<Graphics::Screen *>(_screen->getRawSurface());
+	RenderSurface *screen = _hdScreen ? _hdScreen : _screen;
+	Graphics::Screen *scr = dynamic_cast<Graphics::Screen *>(screen->getRawSurface());
 	assert(scr);
 	return scr;
 }

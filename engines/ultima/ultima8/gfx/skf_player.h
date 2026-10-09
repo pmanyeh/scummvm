@@ -45,6 +45,7 @@ public:
 
 	void run();
 	void paint(RenderSurface *surf, int lerp);
+	void paintComposited(RenderSurface *surf, int32 x, int32 y, int32 sx, int32 sy) override;
 
 	void start();
 	void stop();
@@ -70,6 +71,7 @@ private:
 	RenderSurface *_buffer;
 	Palette _palette;
 	RenderedText *_subs;
+	bool _subsHighRes; //!< _subs is drawn by paintComposited
 	int _subtitleY;
 	bool _introMusicHack;
 };

@@ -24,6 +24,7 @@
 #include "common/config-manager.h"
 #include "common/system.h"
 #include "graphics/cursorman.h"
+#include "graphics/managed_surface.h"
 #include "ultima/ultima.h"
 #include "ultima/ultima8/games/game_data.h"
 #include "ultima/ultima8/gfx/palette.h"
@@ -36,6 +37,7 @@
 #include "ultima/ultima8/world/actors/avatar_mover_process.h"
 #include "ultima/ultima8/world/actors/main_actor.h"
 #include "ultima/ultima8/world/get_object.h"
+#include "ultima/ultima8/ultima8.h"
 
 namespace Ultima {
 namespace Ultima8 {
@@ -579,7 +581,17 @@ void Mouse::update() {
 
 			if (frame >= 0 && (uint)frame < mouse->frameCount()) {
 				const ShapeFrame *f = mouse->getFrame(frame);
-				CursorMan.replaceCursor(f->getSurface(), f->_xoff, f->_yoff, f->_keycolor);
+				Ultima8Engine *engine = Ultima8Engine::get_instance();
+				if (engine->isHDText()) {
+					// the window has the resolution of the high-res text layer
+					const Graphics::Surface &src = f->getSurface();
+					Graphics::ManagedSurface scaled(engine->gameToHDX(src.w), engine->gameToHDY(src.h), src.format);
+					scaled.blitFrom(src, Common::Rect(src.w, src.h), Common::Rect(scaled.w, scaled.h));
+					CursorMan.replaceCursor(scaled.rawSurface(), engine->gameToHDX(f->_xoff),
+					                        engine->gameToHDY(f->_yoff), f->_keycolor);
+				} else {
+					CursorMan.replaceCursor(f->getSurface(), f->_xoff, f->_yoff, f->_keycolor);
+				}
 				CursorMan.replaceCursorPalette(mouse->getPalette()->data(), 0, 256);
 				CursorMan.showMouse(true);
 			} else {

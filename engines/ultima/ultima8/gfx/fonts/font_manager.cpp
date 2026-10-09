@@ -32,6 +32,7 @@
 #include "ultima/ultima8/gfx/fonts/jp_font.h"
 #include "ultima/ultima8/gfx/palette.h"
 #include "ultima/ultima8/gfx/palette_manager.h"
+#include "ultima/ultima8/ultima8.h"
 
 namespace Ultima {
 namespace Ultima8 {
@@ -61,6 +62,10 @@ void FontManager::resetGameFonts() {
 		delete _overrides[i];
 	_overrides.clear();
 
+	for (unsigned int i = 0; i < _hdOverrides.size(); ++i)
+		delete _hdOverrides[i];
+	_hdOverrides.clear();
+
 	for (unsigned int i = 0; i < _ttFonts.size(); ++i)
 		delete _ttFonts[i];
 	_ttFonts.clear();
@@ -70,7 +75,10 @@ void FontManager::resetGameFonts() {
 	_ttfFonts.clear();}
 
 Font *FontManager::getGameFont(unsigned int fontnum,
-		bool allowOverride) {
+		bool allowOverride, bool hd) {
+	if (allowOverride && hd && fontnum < _hdOverrides.size() && _hdOverrides[fontnum])
+		return _hdOverrides[fontnum];
+
 	if (allowOverride && fontnum < _overrides.size() && _overrides[fontnum])
 		return _overrides[fontnum];
 
@@ -123,14 +131,15 @@ Graphics::Font *FontManager::getTTF_Font(const Common::Path &filename, int point
 #endif
 }
 
-void FontManager::setOverride(unsigned int fontnum, Font *newFont) {
-	if (fontnum >= _overrides.size())
-		_overrides.resize(fontnum + 1);
+void FontManager::setOverride(unsigned int fontnum, Font *newFont, bool hd) {
+	Common::Array<Font *> &overrides = hd ? _hdOverrides : _overrides;
+	if (fontnum >= overrides.size())
+		overrides.resize(fontnum + 1);
 
-	if (_overrides[fontnum])
-		delete _overrides[fontnum];
+	if (overrides[fontnum])
+		delete overrides[fontnum];
 
-	_overrides[fontnum] = newFont;
+	overrides[fontnum] = newFont;
 }
 
 
@@ -144,11 +153,11 @@ bool FontManager::addTTFOverride(unsigned int fontnum, const Common::Path &filen
 bool FontManager::addCJKOverride(unsigned int fontnum, const Common::Path &filename,
 								 int pointsize, uint32 rgb, int bordersize,
 								 bool antialiasing, int letterSpacing,
-								 int cjkLatinSpacing, int lineSpacing) {
+								 int cjkLatinSpacing, int lineSpacing, bool hd) {
 	if (!addTTFOverride(fontnum, filename, pointsize, rgb, bordersize,
-	                    antialiasing, false, true))
+	                    antialiasing, false, true, hd))
 		return false;
-	TTFont *font = dynamic_cast<TTFont *>(_overrides[fontnum]);
+	TTFont *font = dynamic_cast<TTFont *>(hd ? _hdOverrides[fontnum] : _overrides[fontnum]);
 	if (font)
 		font->setSpacing(letterSpacing, cjkLatinSpacing, lineSpacing);
 	return true;
@@ -156,16 +165,19 @@ bool FontManager::addCJKOverride(unsigned int fontnum, const Common::Path &filen
 
 bool FontManager::addTTFOverride(unsigned int fontnum, const Common::Path &filename,
 								 int pointsize, uint32 rgb, int bordersize,
-								 bool antialiasing, bool SJIS, bool utf8) {
+								 bool antialiasing, bool SJIS, bool utf8, bool hd) {
 	Graphics::Font *f = getTTF_Font(filename, pointsize, antialiasing);
 	if (!f)
 		return false;
 
 	TTFont *font = new TTFont(f, rgb, bordersize, antialiasing, SJIS, utf8);
-	bool highres = ConfMan.getBool("font_highres");
+	// With the high-res text layer, only its own fonts are high-res: the
+	// others are drawn with the game
+	bool highres = hd || (ConfMan.getBool("font_highres") &&
+	                      !Ultima8Engine::get_instance()->isHDText());
 	font->setHighRes(highres);
 
-	setOverride(fontnum, font);
+	setOverride(fontnum, font, hd);
 
 	debugC(kDebugGraphics, "Added TTF override for font %u", fontnum);
 	return true;

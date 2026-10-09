@@ -91,6 +91,11 @@ private:
 	ObjectManager *_objectManager;
 	UCMachine *_ucMachine;
 	RenderSurface *_screen;
+	//! Window resolution surface of the high-res text layer, or null. The
+	//! game is still drawn on _screen at its own resolution, then scaled to
+	//! this surface and high-res text is drawn on top (hd_text).
+	RenderSurface *_hdScreen;
+	int32 _hdScaleX, _hdScaleY; //!< _hdScreen / _screen size, 16.16 fixed point
 	Mouse *_mouse;
 	PaletteManager *_paletteManager;
 	GameData *_gameData;
@@ -183,6 +188,8 @@ public:
 	Common::Error startupGame();
 
 	Common::Error changeVideoMode(int width, int height);
+	//! Size of the high-res text layer for a game resolution, false if off
+	bool getHDTextSize(int width, int height, int &hdWidth, int &hdHeight) const;
 
 	//! Get current GameInfo struct
 	const GameInfo *getGameInfo() const {
@@ -194,6 +201,32 @@ public:
 	}
 
 	Graphics::Screen *getScreen() const;
+
+	//! True if text in high-res fonts is drawn at the window resolution
+	bool isHDText() const {
+		return _hdScreen != nullptr;
+	}
+	//! Scale from game pixels to high-res text pixels, 16.16 fixed point
+	int32 getHDScaleX() const {
+		return _hdScaleX;
+	}
+	int32 getHDScaleY() const {
+		return _hdScaleY;
+	}
+	//! Convert a length from high-res text pixels to game pixels (rounded up)
+	int32 hdToGameX(int32 v) const {
+		return (int32)(((int64)v * 0x10000 + _hdScaleX - 1) / _hdScaleX);
+	}
+	int32 hdToGameY(int32 v) const {
+		return (int32)(((int64)v * 0x10000 + _hdScaleY - 1) / _hdScaleY);
+	}
+	//! Convert a length from game pixels to high-res text pixels
+	int32 gameToHDX(int32 v) const {
+		return (int32)(((int64)v * _hdScaleX + 0x8000) >> 16);
+	}
+	int32 gameToHDY(int32 v) const {
+		return (int32)(((int64)v * _hdScaleY + 0x8000) >> 16);
+	}
 
 	Common::Error runGame();
 	virtual void handleEvent(const Common::Event &event);

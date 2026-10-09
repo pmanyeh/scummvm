@@ -26,6 +26,7 @@
 #include "ultima/ultima8/gumps/ask_gump.h"
 #include "ultima/ultima8/gumps/bark_gump.h"
 #include "ultima/ultima8/gumps/widgets/button_widget.h"
+#include "ultima/ultima8/ultima8.h"
 
 namespace Ultima {
 namespace Ultima8 {
@@ -56,26 +57,7 @@ void TextWidget::InitGump(Gump *newparent, bool take_focus) {
 	Font *font = getFont();
 
 	// Y offset is always baseline
-	_dims.moveTo(0, -font->getBaseline());
-
-	if (_gameFont && getFont()->isHighRes()) {
-		Common::Rect32 rect(_dims);
-		ScreenSpaceToGumpRect(rect, ROUND_OUTSIDE);
-		_dims.moveTo(0, rect.top);
-
-		// Note that GumpRectToScreenSpace is guaranteed to keep
-		// _targetWidth/_targetHeight zero if they already were.
-		Common::Rect32 target(_dims);
-		GumpRectToScreenSpace(target, ROUND_OUTSIDE);
-
-		_targetWidth = target.width();
-		_targetHeight = target.height();
-
-		Common::Rect32 sr(0, 0, _targetWidth, _targetHeight);
-		ScreenSpaceToGumpRect(sr, ROUND_OUTSIDE);
-		_dims.setWidth(sr.width());
-		_dims.setHeight(sr.height());
-	}
+	_dims.moveTo(0, -textToGameY(font->getBaseline()));
 
 	setupNextText();
 }
@@ -84,22 +66,43 @@ int TextWidget::getVlead() {
 	renderText();
 	assert(_cachedText);
 
-	int32 vlead = _cachedText->getVlead();
-
-	if (_gameFont && getFont()->isHighRes()) {
-		Common::Rect32 rect(0, 0, 0, vlead);
-		ScreenSpaceToGumpRect(rect, ROUND_OUTSIDE);
-		vlead = rect.height();
-	}
-
-	return vlead;
+	return textToGameY(_cachedText->getVlead());
 }
 
 Font *TextWidget::getFont() const {
 	if (_gameFont)
-		return FontManager::get_instance()->getGameFont(_fontNum, true);
+		return FontManager::get_instance()->getGameFont(_fontNum, true, true);
 	else
 		return FontManager::get_instance()->getTTFont(_fontNum);
+}
+
+// High-res fonts measure text in pixels of the high-res text layer (the
+// window); the widget itself and its target size are in game pixels.
+bool TextWidget::isHighResText() const {
+	return _gameFont && getFont()->isHighRes();
+}
+
+int32 TextWidget::textToGameX(int32 v) const {
+	return isHighResText() ? Ultima8Engine::get_instance()->hdToGameX(v) : v;
+}
+
+int32 TextWidget::textToGameY(int32 v) const {
+	return isHighResText() ? Ultima8Engine::get_instance()->hdToGameY(v) : v;
+}
+
+int32 TextWidget::textTargetWidth() const {
+	return isHighResText() ? Ultima8Engine::get_instance()->gameToHDX(_targetWidth) : _targetWidth;
+}
+
+int32 TextWidget::textTargetHeight() const {
+	return isHighResText() ? Ultima8Engine::get_instance()->gameToHDY(_targetHeight) : _targetHeight;
+}
+
+void TextWidget::setTextDims(Font *font) {
+	_dims.top = -textToGameY(font->getBaseline());
+	_dims.left = 0;
+	_dims.setWidth(textToGameX(_tx));
+	_dims.setHeight(textToGameY(_ty));
 }
 
 bool TextWidget::setupNextText() {
@@ -111,27 +114,13 @@ bool TextWidget::setupNextText() {
 
 	unsigned int remaining;
 	font->getTextSize(_text.substr(_currentStart), _tx, _ty, remaining,
-	                  _targetWidth, _targetHeight, _textAlign, true, _doPaging);
+	                  textTargetWidth(), textTargetHeight(), _textAlign, true, _doPaging);
 
-
-	_dims.top = -font->getBaseline();
-	_dims.left = 0;
-	_dims.setWidth(_tx);
-	_dims.setHeight(_ty);
+	setTextDims(font);
 	_currentEnd = _currentStart + remaining;
 
 	delete _cachedText;
 	_cachedText = nullptr;
-
-	if (_gameFont) {
-		Font *fontP = getFont();
-		if (fontP->isHighRes()) {
-			Common::Rect32 sr(0, 0, _dims.width(), _dims.height());
-			ScreenSpaceToGumpRect(sr, ROUND_OUTSIDE);
-			_dims.setWidth(sr.width());
-			_dims.setHeight(sr.height());
-		}
-	}
 
 	return true;
 }
@@ -149,7 +138,7 @@ void TextWidget::renderText() {
 		unsigned int remaining;
 		_cachedText = font->renderText(_text.substr(_currentStart,
 		                               _currentEnd - _currentStart),
-		                               remaining, _targetWidth, _targetHeight,
+		                               remaining, textTargetWidth(), textTargetHeight(),
 		                               _textAlign, true, _doPaging);
 	}
 }
@@ -160,7 +149,8 @@ void TextWidget::PaintThis(RenderSurface *surf, int32 lerp_factor, bool scaled) 
 
 	renderText();
 
-	if (scaled && _gameFont && getFont()->isHighRes()) {
+	// drawn at the window resolution by PaintComposited
+	if (scaled && isHighResText()) {
 		return;
 	}
 
@@ -172,17 +162,19 @@ void TextWidget::PaintThis(RenderSurface *surf, int32 lerp_factor, bool scaled) 
 
 // Overloadable method to Paint just this gumps unscaled components that require compositing (RenderSurface is relative to parent).
 void TextWidget::PaintComposited(RenderSurface *surf, int32 lerp_factor, int32 sx, int32 sy) {
-	Font *font = getFont();
+	if (!isHighResText()) return;
 
-	if (!_gameFont || !font->isHighRes()) return;
+	renderText();
 
 	int32 x = 0, y = 0;
 	GumpToScreenSpace(x, y, ROUND_BOTTOMRIGHT);
+	x = ScaleCoord(x, sx);
+	y = ScaleCoord(y, sy);
 
 	if (!_blendColour)
-		_cachedText->draw(surf, x, y, true);
+		_cachedText->draw(surf, x, y);
 	else
-		_cachedText->drawBlended(surf, x, y, _blendColour, true);
+		_cachedText->drawBlended(surf, x, y, _blendColour);
 
 	if (dynamic_cast<BarkGump *>(_parent))
 		return;
@@ -245,15 +237,12 @@ bool TextWidget::loadData(Common::ReadStream *rs, uint32 version) {
 	// after loading.
 	Font *font = getFont();
 
-	int32 tx, ty;
 	unsigned int remaining;
-	font->getTextSize(_text.substr(_currentStart), tx, ty, remaining,
-	                  _targetWidth, _targetHeight, _textAlign, true, _doPaging);
+	font->getTextSize(_text.substr(_currentStart), _tx, _ty, remaining,
+	                  textTargetWidth(), textTargetHeight(), _textAlign, true, _doPaging);
 
 	// Y offset is always baseline
-	_dims.top = -font->getBaseline();
-	_dims.setWidth(tx);
-	_dims.setHeight(ty);
+	setTextDims(font);
 	_currentEnd = _currentStart + remaining;
 
 	return true;

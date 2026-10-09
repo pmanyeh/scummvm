@@ -51,6 +51,7 @@ public:
 	void run() override;
 
 	void PaintThis(RenderSurface *, int32 lerp_factor, bool scaled) override;
+	void PaintComposited(RenderSurface *surf, int32 lerp_factor, int32 sx, int32 sy) override;
 
 	bool OnKeyDown(int key, int mod) override;
 

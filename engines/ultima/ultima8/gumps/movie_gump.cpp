@@ -191,6 +191,12 @@ void MovieGump::run() {
 	}
 }
 
+void MovieGump::PaintComposited(RenderSurface *surf, int32 lerp_factor, int32 sx, int32 sy) {
+	int32 x = 0, y = 0;
+	GumpToScreenSpace(x, y);
+	_player->paintComposited(surf, ScaleCoord(x, sx), ScaleCoord(y, sy), sx, sy);
+}
+
 void MovieGump::PaintThis(RenderSurface *surf, int32 lerp_factor, bool scaled) {
 	Gump::PaintThis(surf, lerp_factor, scaled);
 	_player->paint(surf, lerp_factor);
