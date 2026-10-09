@@ -85,7 +85,11 @@ Localization::~Localization() {
 }
 
 void Localization::configure(bool supportedGame) {
+	// The game option checkbox (localization_zh_tw) decides once it has
+	// been set; before that the localization setting does (default off)
 	Common::String language = ConfMan.get("localization");
+	if (ConfMan.hasKey("localization_zh_tw"))
+		language = ConfMan.getBool("localization_zh_tw") ? "zh_TW" : "off";
 	language.trim();
 	if (language.empty() || language.equalsIgnoreCase("off"))
 		language.clear();

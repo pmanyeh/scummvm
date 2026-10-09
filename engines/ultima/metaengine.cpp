@@ -162,6 +162,30 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 		}
 	},
 	{
+		GAMEOPTION_LOCALIZATION,
+		{
+			// The game text in Traditional Chinese (display only; English
+			// version of Ultima VIII, see ultima8/misc/localization.h)
+			_s("Traditional Chinese translation (\xE7\xB9\x81\xE9\xAB\x94\xE4\xB8\xAD\xE6\x96\x87)"),
+			_s("Shows the game text in Traditional Chinese (English version of the game only)."),
+			"localization_zh_tw",
+			false,
+			0,
+			0
+		}
+	},
+	{
+		GAMEOPTION_LOCALIZATION_ANNOTATE,
+		{
+			_s("Show the English after names (\xE5\x90\x8D\xE7\xA8\xB1\xE5\x8A\xA0\xE8\xA8\xBB\xE8\x8B\xB1\xE6\x96\x87)"),
+			_s("With the Chinese translation, names are followed by their English the first time they are shown."),
+			"localization_annotate",
+			true,
+			0,
+			0
+		}
+	},
+	{
 		GAMEOPTION_ALWAYS_CHRISTMAS,
 		{
 			_s("Always enable Christmas easter-egg"),
