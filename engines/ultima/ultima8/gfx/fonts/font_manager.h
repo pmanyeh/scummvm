@@ -101,6 +101,15 @@ public:
 	//! get a TTF font (for non-game fonts)
 	Font *getTTFont(unsigned int ttfnum);
 
+	//! A small CJK font of the high-res text layer, for the labels of the
+	//! status panel (stored as a high-res override of this font number)
+	static const unsigned int HD_SMALL_CJK_FONT = 64;
+
+	//! get the high-res text layer's font for fontnum, or nullptr
+	Font *getHDFont(unsigned int fontnum) {
+		return fontnum < _hdOverrides.size() ? _hdOverrides[fontnum] : nullptr;
+	}
+
 	//! override a game font with a TTF.
 	//! \param fontnum the font to override
 	//! \param filename the filename of the TTF

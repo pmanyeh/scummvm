@@ -33,6 +33,7 @@
 #include "ultima/ultima8/gumps/mini_stats_gump.h"
 #include "ultima/ultima8/ultima8.h"
 #include "ultima/ultima8/kernel/mouse.h"
+#include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/world/get_object.h"
 
 namespace Ultima {
@@ -82,6 +83,7 @@ PaperdollGump::PaperdollGump() : ContainerGump(), _statButtonId(0),
 		_draggingArmourClass(0), _draggingWeight(0),
 		_backpackRect(49, 25, 59, 50) {
 	Common::fill(_cachedText, _cachedText + 14, (RenderedText *)nullptr);
+	Common::fill(_hdLabels, _hdLabels + 7, (RenderedText *)nullptr);
 	Common::fill(_cachedVal, _cachedVal + 7, 0);
 }
 
@@ -93,12 +95,16 @@ PaperdollGump::PaperdollGump(const Shape *shape, uint32 frameNum, uint16 owner,
 	_statButtonId = 0;
 
 	Common::fill(_cachedText, _cachedText + 14, (RenderedText *)nullptr);
+	Common::fill(_hdLabels, _hdLabels + 7, (RenderedText *)nullptr);
 	Common::fill(_cachedVal, _cachedVal + 7, 0);
 }
 
 PaperdollGump::~PaperdollGump() {
 	for (int i = 0; i < 14; ++i) { // ! constant
 		delete _cachedText[i];
+	}
+	for (int i = 0; i < 7; ++i) { // ! constant
+		delete _hdLabels[i];
 	}
 }
 
@@ -144,11 +150,14 @@ void PaperdollGump::PaintStat(RenderSurface *surf, unsigned int n,
 	char buf[16]; // enough for uint32
 	unsigned int remaining;
 
-	if (!_cachedText[2 * n])
-		_cachedText[2 * n] = descfont->renderText(text, remaining,
-		                     statdescwidth, statheight,
-		                     Font::TEXT_RIGHT);
-	_cachedText[2 * n]->draw(surf, statcoords[n].xd, statcoords[n].y);
+	// a translated label is drawn by PaintComposited
+	if (!getHDLabel(n, text)) {
+		if (!_cachedText[2 * n])
+			_cachedText[2 * n] = descfont->renderText(text, remaining,
+			                     statdescwidth, statheight,
+			                     Font::TEXT_RIGHT);
+		_cachedText[2 * n]->draw(surf, statcoords[n].xd, statcoords[n].y);
+	}
 
 	if (!_cachedText[2 * n + 1] || _cachedVal[n] != val) {
 		delete _cachedText[2 * n + 1];
@@ -159,6 +168,37 @@ void PaperdollGump::PaintStat(RenderSurface *surf, unsigned int n,
 		_cachedVal[n] = val;
 	}
 	_cachedText[2 * n + 1]->draw(surf, statcoords[n].x, statcoords[n].y);
+}
+
+// The CJK font fits the rows of the status panel only at the resolution of
+// the high-res text layer, so the labels are translated only there
+RenderedText *PaperdollGump::getHDLabel(unsigned int n, const Common::String &english) {
+	if (_hdLabels[n])
+		return _hdLabels[n];
+
+	Ultima8Engine *engine = Ultima8Engine::get_instance();
+	Localization *l10n = Localization::get_instance();
+	Font *font = FontManager::get_instance()->getHDFont(FontManager::HD_SMALL_CJK_FONT);
+	if (!engine->isHDText() || !l10n || !font)
+		return nullptr;
+	Common::String label = l10n->translateUI(english, statdescfont);
+	if (label == english)
+		return nullptr;
+
+	unsigned int remaining;
+	_hdLabels[n] = font->renderText(label, remaining, engine->gameToHDX(statdescwidth), 0,
+	                                Font::TEXT_RIGHT);
+	return _hdLabels[n];
+}
+
+void PaperdollGump::PaintComposited(RenderSurface *surf, int32 lerp_factor, int32 sx, int32 sy) {
+	for (unsigned int n = 0; n < 7; ++n) { // constant!
+		if (!_hdLabels[n])
+			continue;
+		int32 x = statcoords[n].xd, y = statcoords[n].y;
+		GumpToScreenSpace(x, y);
+		_hdLabels[n]->draw(surf, ScaleCoord(x, sx), ScaleCoord(y, sy));
+	}
 }
 
 void PaperdollGump::PaintStats(RenderSurface *surf, int32 lerp_factor) {

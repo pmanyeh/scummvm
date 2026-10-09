@@ -50,6 +50,7 @@ public:
 
 	// Paint this Gump
 	void PaintThis(RenderSurface *, int32 lerp_factor, bool scaled) override;
+	void PaintComposited(RenderSurface *surf, int32 lerp_factor, int32 sx, int32 sy) override;
 
 	void ChildNotify(Gump *child, uint32 message) override;
 
@@ -76,7 +77,11 @@ protected:
 	void PaintStat(RenderSurface *surf, unsigned int n,
 	               Common::String text, int val);
 
+	//! The translated label of stat n in the high-res text layer, or nullptr
+	RenderedText *getHDLabel(unsigned int n, const Common::String &english);
+
 	RenderedText *_cachedText[14]; // constant!!
+	RenderedText *_hdLabels[7]; // constant!!
 	int _cachedVal[7]; // constant!!
 
 	uint16 _statButtonId;

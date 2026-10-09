@@ -118,9 +118,9 @@ private:
 	void setupTTFOverrides(const char *category, bool SJIS);
 	void setupJPOverrides();
 	bool setupCJKOverrides();
-	void setupHDCJKOverride(int fontnum, const Common::Path &filename, int pointsize,
+	void setupHDCJKOverride(int fontnum, int pointsize,
 	                        uint32 col32, int border, int letterSpacing,
-	                        int latinSpacing, int lineSpacing);
+	                        int latinSpacing, int lineSpacing, bool useSettings = true);
 
 	RawArchive *_fixed;
 	MainShapeArchive *_mainShapes;

@@ -443,9 +443,15 @@ bool GameData::setupCJKOverrides() {
 		}
 		replaced.push_back(fontnum);
 
-		if (Ultima8Engine::get_instance()->isHDText())
-			setupHDCJKOverride(fontnum, filename, pointsize, col32, border,
+		if (Ultima8Engine::get_instance()->isHDText()) {
+			setupHDCJKOverride(fontnum, pointsize, col32, border,
 			                   letterSpacing, latinSpacing, lineSpacing);
+			// the status panel labels: font 0's colours, 8 pixels for
+			// its rows of 9
+			if (fontnum == 0)
+				setupHDCJKOverride(FontManager::HD_SMALL_CJK_FONT, 8, col32, border,
+				                   0, 0, 0, false);
+		}
 	}
 
 	if (ok && !replaced.empty())
@@ -458,35 +464,38 @@ bool GameData::setupCJKOverrides() {
 }
 
 // A setting of the high-res CJK font, in game pixels (decimals allowed)
-static double hdFontSetting(const char *key, double def) {
-	if (!ConfMan.hasKey(key) || ConfMan.get(key).empty())
+static double hdFontSetting(const char *key, double def, bool useSettings = true) {
+	if (!useSettings || !ConfMan.hasKey(key) || ConfMan.get(key).empty())
 		return def;
 	return atof(ConfMan.get(key).c_str());
 }
 
 // The CJK font for the high-res text layer, which draws in window pixels.
 // Its settings (font_cjk_hd_*) are in game pixels like the others, so they
-// do not depend on the window size; by default the same as the game font's.
-void GameData::setupHDCJKOverride(int fontnum, const Common::Path &filename, int pointsize,
-		uint32 col32, int border, int letterSpacing, int latinSpacing, int lineSpacing) {
+// do not depend on the window size. By default: jf open huninn, with the
+// size and spacing of the game font. With useSettings false, the size and
+// spacing are the given ones.
+void GameData::setupHDCJKOverride(int fontnum, int pointsize, uint32 col32, int border,
+		int letterSpacing, int latinSpacing, int lineSpacing, bool useSettings) {
 	Ultima8Engine *engine = Ultima8Engine::get_instance();
 	// game pixels to window pixels
 	const double sx = engine->getHDScaleX() / 65536.0;
 	const double sy = engine->getHDScaleY() / 65536.0;
 
-	Common::Path hdFilename = filename;
+	// a vector font by default: pixel fonts look blurred at most scales
+	Common::Path hdFilename("jf-openhuninn-2.1.ttf");
 	if (ConfMan.hasKey("font_cjk_hd_file") && !ConfMan.get("font_cjk_hd_file").empty())
 		hdFilename = Common::Path(ConfMan.get("font_cjk_hd_file"));
 	bool antialiasing = !ConfMan.hasKey("font_cjk_hd_antialiasing") ||
 	                    ConfMan.getBool("font_cjk_hd_antialiasing");
-	int hdSize = (int)(hdFontSetting("font_cjk_hd_size", pointsize) * sx + 0.5);
+	int hdSize = (int)(hdFontSetting("font_cjk_hd_size", pointsize, useSettings) * sx + 0.5);
 	// a border of a whole game pixel looks too heavy
 	double borderSetting = hdFontSetting("font_cjk_hd_border", border * 0.5);
 	int hdBorder = borderSetting > 0 ? MAX(1, (int)(borderSetting * sx + 0.5)) : 0;
-	int hdLetter = (int)(hdFontSetting("font_cjk_hd_letter_spacing", letterSpacing) * sx + 0.5);
-	int hdLatin = (int)(hdFontSetting("font_cjk_hd_latin_spacing", latinSpacing) * sx + 0.5);
+	int hdLetter = (int)(hdFontSetting("font_cjk_hd_letter_spacing", letterSpacing, useSettings) * sx + 0.5);
+	int hdLatin = (int)(hdFontSetting("font_cjk_hd_latin_spacing", latinSpacing, useSettings) * sx + 0.5);
 	// the font adds 2 pixels between lines
-	int hdLine = (int)((2 + hdFontSetting("font_cjk_hd_line_spacing", lineSpacing)) * sy + 0.5) - 2;
+	int hdLine = (int)((2 + hdFontSetting("font_cjk_hd_line_spacing", lineSpacing, useSettings)) * sy + 0.5) - 2;
 
 	if (hdSize <= 0 || !FontManager::get_instance()->addCJKOverride(fontnum, hdFilename, hdSize,
 	        col32, hdBorder, antialiasing, hdLetter, hdLatin, hdLine, true))
