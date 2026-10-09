@@ -96,6 +96,15 @@ private:
 	//! this surface and high-res text is drawn on top (hd_text).
 	RenderSurface *_hdScreen;
 	int32 _hdScaleX, _hdScaleY; //!< _hdScreen / _screen size, 16.16 fixed point
+	//! What a gump with high-res text had painted on _screen, to find the
+	//! pixels painted over by the gumps after it (see saveHDOcclusion)
+	struct HDOcclusion {
+		const Gump *_gump;
+		Common::Rect _rect;
+		Common::Array<byte> _pixels;
+	};
+	Common::Array<HDOcclusion> _hdOcclusions;
+	uint _hdOcclusionCount;
 	Mouse *_mouse;
 	PaletteManager *_paletteManager;
 	GameData *_gameData;
@@ -213,6 +222,13 @@ public:
 	int32 getHDScaleY() const {
 		return _hdScaleY;
 	}
+	//! High-res text is drawn after the whole game. A gump with high-res
+	//! text saves what it painted (rect: in pixels of the game screen);
+	//! after its text is drawn, the pixels other gumps painted over are
+	//! restored from the game.
+	void saveHDOcclusion(const Gump *gump, RenderSurface *surf, Common::Rect32 rect);
+	void restoreHDOcclusion(const Gump *gump);
+
 	//! Convert a length from high-res text pixels to game pixels (rounded up)
 	int32 hdToGameX(int32 v) const {
 		return (int32)(((int64)v * 0x10000 + _hdScaleX - 1) / _hdScaleX);

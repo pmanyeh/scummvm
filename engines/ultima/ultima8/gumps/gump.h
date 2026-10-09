@@ -161,6 +161,11 @@ public:
 	// \param scaley Fixed point scaling factor for y coord
 	virtual void        PaintCompositing(RenderSurface *surf, int32 lerp_factor, int32 scalex, int32 scaley);
 
+	//! True if PaintComposited draws high-res text
+	virtual bool        hasHighResText() const {
+		return false;
+	}
+
 protected:
 
 	//! Overloadable method to Paint just this Gump (RenderSurface is relative to this)

@@ -51,6 +51,9 @@ public:
 	// Paint this Gump
 	void PaintThis(RenderSurface *, int32 lerp_factor, bool scaled) override;
 	void PaintComposited(RenderSurface *surf, int32 lerp_factor, int32 sx, int32 sy) override;
+	bool hasHighResText() const override {
+		return _hdLabels[0] != nullptr;
+	}
 
 	void ChildNotify(Gump *child, uint32 message) override;
 

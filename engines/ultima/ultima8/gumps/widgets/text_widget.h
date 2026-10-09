@@ -69,6 +69,9 @@ public:
 	void            PaintThis(RenderSurface *, int32 lerp_factor, bool scaled) override;
 
 	void            PaintComposited(RenderSurface *surf, int32 lerp_factor, int32 scalex, int32 scaley) override;
+	bool            hasHighResText() const override {
+		return isHighResText();
+	}
 
 	Gump *onMouseMotion(int32 mx, int32 my) override;
 

@@ -122,7 +122,7 @@ Ultima8Engine::Ultima8Engine(OSystem *syst, const Ultima::UltimaGameDescription 
 		_isRunning(false),  _gameInfo(nullptr),
 		_configFileMan(nullptr), _saveCount(0), _game(nullptr), _lastError(Common::kNoError),
 		_kernel(nullptr), _objectManager(nullptr), _mouse(nullptr), _ucMachine(nullptr),
-		_screen(nullptr), _hdScreen(nullptr), _hdScaleX(0x10000), _hdScaleY(0x10000), _fontManager(nullptr), _localization(nullptr), _paletteManager(nullptr), _gameData(nullptr),
+		_screen(nullptr), _hdScreen(nullptr), _hdScaleX(0x10000), _hdScaleY(0x10000), _hdOcclusionCount(0), _fontManager(nullptr), _localization(nullptr), _paletteManager(nullptr), _gameData(nullptr),
 		_world(nullptr), _desktopGump(nullptr), _gameMapGump(nullptr), _avatarMoverProcess(nullptr),
 		_frameSkip(false), _frameLimit(true), _interpolate(true), _animationRate(100),
 		_avatarInStasis(false), _cruStasis(false), _showEditorItems(false), _inversion(0),
@@ -714,6 +714,64 @@ static void scaleNearest(const Graphics::ManagedSurface &src, Graphics::ManagedS
 	}
 }
 
+void Ultima8Engine::saveHDOcclusion(const Gump *gump, RenderSurface *surf, Common::Rect32 rect) {
+	// only gumps painted directly on the game screen (not in a buffer)
+	if (!_hdScreen || surf != _screen)
+		return;
+	const Graphics::ManagedSurface *screen = _screen->getRawSurface();
+	rect.clip(Common::Rect32(screen->w, screen->h));
+	if (rect.isEmpty())
+		return;
+
+	if (_hdOcclusionCount == _hdOcclusions.size())
+		_hdOcclusions.resize(_hdOcclusionCount + 1);
+	HDOcclusion &occlusion = _hdOcclusions[_hdOcclusionCount++];
+	occlusion._gump = gump;
+	occlusion._rect = Common::Rect(rect.left, rect.top, rect.right, rect.bottom);
+	const int bpp = screen->format.bytesPerPixel;
+	const int rowSize = rect.width() * bpp;
+	occlusion._pixels.resize(rowSize * rect.height());
+	for (int y = 0; y < rect.height(); y++)
+		memcpy(&occlusion._pixels[y * rowSize], screen->getBasePtr(rect.left, rect.top + y), rowSize);
+}
+
+void Ultima8Engine::restoreHDOcclusion(const Gump *gump) {
+	const HDOcclusion *occlusion = nullptr;
+	for (uint i = 0; i < _hdOcclusionCount; i++) {
+		if (_hdOcclusions[i]._gump == gump)
+			occlusion = &_hdOcclusions[i];
+	}
+	if (!occlusion)
+		return;
+
+	const Graphics::ManagedSurface *src = _screen->getRawSurface();
+	Graphics::ManagedSurface *dst = _hdScreen->getRawSurface();
+	const Common::Rect &r = occlusion->_rect;
+	const int bpp = src->format.bytesPerPixel;
+	const int rowSize = r.width() * bpp;
+	for (int y = r.top; y < r.bottom; y++) {
+		const byte *before = &occlusion->_pixels[(y - r.top) * rowSize];
+		const byte *after = (const byte *)src->getBasePtr(r.left, y);
+		if (!memcmp(before, after, rowSize))
+			continue;
+		// the window pixels showing game pixel (x, y), as in scaleNearest
+		const int y0 = (y * dst->h + src->h - 1) / src->h;
+		const int y1 = ((y + 1) * dst->h + src->h - 1) / src->h;
+		for (int x = r.left; x < r.right; x++) {
+			const int i = (x - r.left) * bpp;
+			if (!memcmp(before + i, after + i, bpp))
+				continue;
+			const int x0 = (x * dst->w + src->w - 1) / src->w;
+			const int x1 = ((x + 1) * dst->w + src->w - 1) / src->w;
+			for (int dy = y0; dy < y1; dy++) {
+				byte *out = (byte *)dst->getBasePtr(x0, dy);
+				for (int dx = x0; dx < x1; dx++, out += bpp)
+					memcpy(out, after + i, bpp);
+			}
+		}
+	}
+}
+
 // Paint the _screen
 void Ultima8Engine::paint() {
 #ifdef PAINT_TIMING
@@ -748,6 +806,7 @@ void Ultima8Engine::paint() {
 	_screen->fill32(TEX32_PACK_RGB(0x10, 0xFF, 0x10), r);
 #endif
 
+	_hdOcclusionCount = 0;
 	_desktopGump->Paint(_screen, _lerpFactor, _hdScreen != nullptr);
 
 	if (_hdScreen) {

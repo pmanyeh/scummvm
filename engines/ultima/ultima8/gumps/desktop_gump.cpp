@@ -62,29 +62,6 @@ void DesktopGump::PaintChildren(RenderSurface *surf, int32 lerp_factor, bool sca
 	}
 }
 
-// High-res text is drawn after the whole game, so text under a modal gump
-// would be drawn on top of it: leave it out
-void DesktopGump::PaintCompositing(RenderSurface *surf, int32 lerp_factor,
-								   int32 sx, int32 sy) {
-	if (IsHidden())
-		return;
-
-	Gump *topModal = nullptr;
-	for (auto *g : _children) {
-		if (!g->IsClosing() && !g->IsHidden() && dynamic_cast<ModalGump *>(g) &&
-		        !dynamic_cast<TargetGump *>(g))
-			topModal = g;
-	}
-
-	bool paint = !topModal;
-	for (auto *g : _children) {
-		if (g == topModal)
-			paint = true;
-		if (paint && !g->IsClosing())
-			g->PaintCompositing(surf, lerp_factor, sx, sy);
-	}
-}
-
 void DesktopGump::RenderSurfaceChanged() {
 	// Resize the desktop gump to match the parent
 	if (_parent) {

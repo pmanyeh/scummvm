@@ -232,6 +232,13 @@ void Gump::Paint(RenderSurface *surf, int32 lerp_factor, bool scaled) {
 	// Paint This
 	PaintThis(surf, lerp_factor, scaled);
 
+	// High-res text is drawn later: remember what is under it
+	if (scaled && hasHighResText()) {
+		Common::Rect32 rect(_dims);
+		GumpRectToScreenSpace(rect, ROUND_OUTSIDE);
+		Ultima8Engine::get_instance()->saveHDOcclusion(this, surf, rect);
+	}
+
 	// Paint children
 	PaintChildren(surf, lerp_factor, scaled);
 
@@ -280,15 +287,16 @@ void Gump::PaintCompositing(RenderSurface *surf, int32 lerp_factor,
 	new_rect.clip(old_rect);
 	surf->setClippingRect(new_rect);
 
-	// Iterate all children, in painting order
+	// Paint This, then the children: the painting order
+	PaintComposited(surf, lerp_factor, sx, sy);
+	// and hide what other gumps painted over
+	Ultima8Engine::get_instance()->restoreHDOcclusion(this);
+
 	for (auto *g : _children) {
 		// Paint if not closing
 		if (!g->IsClosing())
 			g->PaintCompositing(surf, lerp_factor, sx, sy);
 	}
-
-	// Paint This
-	PaintComposited(surf, lerp_factor, sx, sy);
 
 	// Reset The Clipping Rect
 	surf->setClippingRect(old_rect);

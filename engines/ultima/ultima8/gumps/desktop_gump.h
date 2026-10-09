@@ -44,7 +44,6 @@ public:
 
 	void PaintThis(RenderSurface *surf, int32 lerp_factor, bool scaled) override;
 	void PaintChildren(RenderSurface *surf, int32 lerp_factor, bool scaled) override;
-	void PaintCompositing(RenderSurface *surf, int32 lerp_factor, int32 scalex, int32 scaley) override;
 
 	bool loadData(Common::ReadStream *rs, uint32 version);
 	void saveData(Common::WriteStream *ws) override;
