@@ -515,6 +515,7 @@ MODULE_OBJS += \
 	ultima8/gumps/message_box_gump.o \
 	ultima8/gumps/minimap_gump.o \
 	ultima8/gumps/mini_stats_gump.o \
+	ultima8/gumps/quick_bar_gump.o \
 	ultima8/gumps/modal_gump.o \
 	ultima8/gumps/movie_gump.o \
 	ultima8/gumps/paged_gump.o \

@@ -198,6 +198,18 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 		}
 	},
 	{
+		GAMEOPTION_QUICK_BAR,
+		{
+			// See ultima8/gumps/quick_bar_gump.h
+			_s("Quick action icons (\xE5\xBF\xAB\xE6\x8D\xB7\xE5\x9C\x96\xE7\xA4\xBA\xE5\x88\x97)"),
+			_s("Icons for the backpack, keyring, saving and other actions in the bottom right corner, shown when the mouse is there."),
+			"quick_bar",
+			true,
+			0,
+			0
+		}
+	},
+	{
 		GAMEOPTION_ALWAYS_CHRISTMAS,
 		{
 			_s("Always enable Christmas easter-egg"),

@@ -44,6 +44,7 @@
 #include "ultima/ultima8/gumps/menu_gump.h"
 #include "ultima/ultima8/gumps/message_box_gump.h"
 #include "ultima/ultima8/gumps/minimap_gump.h"
+#include "ultima/ultima8/gumps/quick_bar_gump.h"
 #include "ultima/ultima8/gumps/shape_viewer_gump.h"
 #include "ultima/ultima8/kernel/delay_process.h"
 #include "ultima/ultima8/kernel/object_manager.h"
@@ -589,6 +590,7 @@ Common::Error Ultima8Engine::startupGame() {
 	// Position interpolation looks nice on U8, but causes Crusader to look janky.
 	ConfMan.registerDefault("interpolate", _gameInfo->_type == GameInfo::GAME_U8);
 	ConfMan.registerDefault("cheat", false);
+	ConfMan.registerDefault("quick_bar", true);
 
 	bool loaded = _game->loadFiles();
 	if (!loaded)
@@ -1617,6 +1619,8 @@ bool Ultima8Engine::newGame(int saveSlot) {
 	if (saveSlot == -1)
 		ConfMan.setInt("lastSave", -1);
 
+	QuickBarGump::createIfEnabled();
+
 	return true;
 }
 
@@ -1659,6 +1663,15 @@ void Ultima8Engine::applyGameSettings() {
 	}
 
 	_gameData->setupFontOverrides();
+
+	// the quick bar can be turned on and off in the game options
+	if (_desktopGump) {
+		Gump *bar = _desktopGump->FindGump<QuickBarGump>();
+		if (bar && !ConfMan.getBool("quick_bar"))
+			bar->Close();
+		else if (!bar)
+			QuickBarGump::createIfEnabled();
+	}
 
 	_frameSkip = ConfMan.getBool("frameSkip");
 	_frameLimit = ConfMan.getBool("frameLimit");
@@ -1837,6 +1850,10 @@ Common::Error Ultima8Engine::loadGameStream(Common::SeekableReadStream *stream) 
 	debug(1, "Done");
 
 	delete sg;
+
+	// not saved: created again
+	QuickBarGump::createIfEnabled();
+
 	return Common::kNoError;
 }
 
