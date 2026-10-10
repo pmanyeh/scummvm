@@ -509,8 +509,8 @@ void GameData::setupCategoryFonts(const Common::HashMap<int, uint32> &colours,
 		{ "scroll", FontManager::CJK_SCROLL_FONT, 9, 0, 0, -1, 0, nullptr },
 		{ "intro", FontManager::CJK_INTRO_FONT, 6, 0, 0, -1, 0, nullptr },
 		// dark letters with the light edge of a carving
-		{ "grave", FontManager::CJK_GRAVE_FONT, -1, 20, 0x404040, 0, 0xAEAEAE, "WangHanZongWeiBeiTiFan-2.ttf" },
-		{ "plaque", FontManager::CJK_PLAQUE_FONT, -1, 20, 0x6A4A1C, 0, 0xFFDB61, "WangHanZongWeiBeiTiFan-2.ttf" }
+		{ "grave", FontManager::CJK_GRAVE_FONT, -1, 32, 0x404040, 0, 0xAEAEAE, "WangHanZongWeiBeiTiFan-2.ttf" },
+		{ "plaque", FontManager::CJK_PLAQUE_FONT, -1, 32, 0x6A4A1C, 0, 0xFFDB61, "WangHanZongWeiBeiTiFan-2.ttf" }
 	};
 
 	Ultima8Engine *engine = Ultima8Engine::get_instance();

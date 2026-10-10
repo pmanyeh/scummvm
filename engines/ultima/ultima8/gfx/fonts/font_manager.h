@@ -107,7 +107,7 @@ public:
 	//! status panel (stored as a high-res override of this font number)
 	static const unsigned int HD_SMALL_CJK_FONT = 64;
 	//! CJK fonts for engravings in Chinese (engraving_chinese): gravestones
-	//! (game font 11) and plaques (10), in the colours of their shadows
+	//! (game font 11) and plaques (10)
 	static const unsigned int CJK_GRAVE_FONT = 65;
 	static const unsigned int CJK_PLAQUE_FONT = 66;
 	//! CJK fonts of their own for books, scrolls and the intro subtitles
