@@ -34,12 +34,12 @@ static const unsigned int PATH_FAILED = 0;
 DEFINE_RUNTIME_CLASSTYPE_CODE(PathfinderProcess)
 
 PathfinderProcess::PathfinderProcess() : Process(),
-		_currentStep(0), _targetItem(0), _hitMode(false),
+		_currentStep(0), _targetItem(0), _hitMode(false), _reachRange(0),
 		_target() {
 }
 
-PathfinderProcess::PathfinderProcess(Actor *actor, ObjId itemid, bool hit) :
-		_currentStep(0), _targetItem(itemid), _hitMode(hit),
+PathfinderProcess::PathfinderProcess(Actor *actor, ObjId itemid, bool hit, int reachRange) :
+		_currentStep(0), _targetItem(itemid), _hitMode(hit), _reachRange(reachRange),
 		_target() {
 	assert(actor);
 	_itemNum = actor->getObjId();
@@ -60,7 +60,10 @@ PathfinderProcess::PathfinderProcess(Actor *actor, ObjId itemid, bool hit) :
 
 	Pathfinder pf;
 	pf.init(actor);
-	pf.setTarget(item, hit);
+	if (_reachRange)
+		pf.setReachTarget(item, _reachRange);
+	else
+		pf.setTarget(item, hit);
 
 	bool ok = pf.pathfind(_path);
 
@@ -77,7 +80,7 @@ PathfinderProcess::PathfinderProcess(Actor *actor, ObjId itemid, bool hit) :
 }
 
 PathfinderProcess::PathfinderProcess(Actor *actor, const Point3 &target) :
-		_target(target), _targetItem(0), _currentStep(0),
+		_target(target), _targetItem(0), _reachRange(0), _currentStep(0),
 		_hitMode(false) {
 	assert(actor);
 	_itemNum = actor->getObjId();
@@ -183,7 +186,10 @@ void PathfinderProcess::run() {
 					// Actor exited combat mode
 					_hitMode = false;
 				}
-				pf.setTarget(item, _hitMode);
+				if (_reachRange)
+					pf.setReachTarget(item, _reachRange);
+				else
+					pf.setTarget(item, _hitMode);
 				_target = item->getLocation();
 			}
 		} else {

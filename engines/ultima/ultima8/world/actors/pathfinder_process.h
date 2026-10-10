@@ -35,7 +35,9 @@ class Actor;
 class PathfinderProcess : public Process {
 public:
 	PathfinderProcess();
-	PathfinderProcess(Actor *actor, ObjId item, bool hit = false);
+	//! \param reachRange if not 0, walk to where the actor is at most this
+	//!        far from the item (Pathfinder::setReachTarget; not saved)
+	PathfinderProcess(Actor *actor, ObjId item, bool hit = false, int reachRange = 0);
 	PathfinderProcess(Actor *actor, const Point3 &target);
 	~PathfinderProcess() override;
 
@@ -51,6 +53,7 @@ protected:
 	Point3 _target;
 	ObjId _targetItem;
 	bool _hitMode;
+	int _reachRange;
 
 	Common::Array<PathfindingAction> _path;
 	unsigned int _currentStep;

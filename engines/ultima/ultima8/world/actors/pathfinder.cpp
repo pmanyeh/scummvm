@@ -116,7 +116,7 @@ bool PathNodeCmp::operator()(const PathNode *n1, const PathNode *n2) const {
 }
 
 Pathfinder::Pathfinder() : _actor(nullptr), _targetItem(nullptr),
-		_hitMode(false), _expandTime(0), _target(),
+		_hitMode(false), _reachRange(0), _expandTime(0), _target(),
 		_actorXd(0), _actorYd(0), _actorZd(0) {
 	expandednodes = 0;
 	_visited.reserve(1500);
@@ -171,6 +171,11 @@ bool Pathfinder::canReach() {
 	return pathfind(path);
 }
 
+void Pathfinder::setReachTarget(Item *item, int range) {
+	setTarget(item, false);
+	_reachRange = range;
+}
+
 bool Pathfinder::alreadyVisited(const Point3 &pt) const {
 	//
 	// There are more efficient search structures we could use for
@@ -191,6 +196,16 @@ bool Pathfinder::alreadyVisited(const Point3 &pt) const {
 bool Pathfinder::checkTarget(const PathNode *node) const {
 	// TODO: these ranges are probably a bit too high,
 	// but otherwise it won't work properly yet -wjp
+	if (_targetItem && _reachRange) {
+		Point3 pt = _targetItem->getLocationAbsolute();
+		int32 itemXd, itemYd, itemZd;
+		_targetItem->getFootpadWorld(itemXd, itemYd, itemZd);
+		const Point3 &a = node->state._point;
+		// gaps between the footpads (0 if they overlap)
+		int32 gapX = MAX<int32>(MAX<int32>(pt.x - itemXd - a.x, a.x - _actorXd - pt.x), 0);
+		int32 gapY = MAX<int32>(MAX<int32>(pt.y - itemYd - a.y, a.y - _actorYd - pt.y), 0);
+		return gapX <= _reachRange && gapY <= _reachRange;
+	}
 	if (_targetItem) {
 		if (_hitMode) {
 			return node->state.checkHit(_actor, _targetItem);

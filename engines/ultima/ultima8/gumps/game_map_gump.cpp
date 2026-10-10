@@ -390,7 +390,8 @@ bool GameMapGump::walkToUse(Item *item) {
 	Kernel *kernel = Kernel::get_instance();
 	cancelWalkToUse();
 	kernel->killProcesses(avatar->getObjId(), PathfinderProcess::PATHFINDER_PROC_TYPE, true);
-	_walkToUsePid = kernel->addProcess(new PathfinderProcess(avatar, item->getObjId()));
+	// next to the item: its footpad at most 16 from the Avatar's
+	_walkToUsePid = kernel->addProcess(new PathfinderProcess(avatar, item->getObjId(), false, 16));
 	_walkToUseItem = item->getObjId();
 	return true;
 }

@@ -74,6 +74,10 @@ public:
 	void init(Actor *actor, PathfindingState *state = 0);
 	void setTarget(const Point3 &pt);
 	void setTarget(Item *item, bool hit = false);
+	//! Target: anywhere the gap between the footpads of the actor and the
+	//! item is at most range. (setTarget(item) compares the far corner of
+	//! the actor, so it cannot be met next to some sides of an item.)
+	void setReachTarget(Item *item, int range);
 
 	//! try to reach the target by pathfinding
 	bool canReach();
@@ -92,6 +96,7 @@ protected:
 	Point3 _target;
 	Item *_targetItem;
 	bool _hitMode;
+	int _reachRange; //!< setReachTarget, 0 if not used
 	int32 _expandTime;
 
 	int32 _actorXd, _actorYd, _actorZd;
