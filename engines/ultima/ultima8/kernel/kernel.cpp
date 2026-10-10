@@ -185,7 +185,8 @@ void Kernel::runProcesses() {
 			//
 			if (((num_run > 8192 && GAME_IS_CRUSADER) || num_run > 65534)
 					&& !p->is_terminated()) {
-				warning("Seem to be stuck in process loop - killing current process");
+				warning("Seem to be stuck in process loop - killing current process: %s",
+				        p->dumpInfo().c_str());
 				p->fail();
 			}
 
