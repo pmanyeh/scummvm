@@ -414,8 +414,8 @@ bool GameData::setupCJKOverrides() {
 	bool antialiasing = ConfMan.hasKey("font_cjk_antialiasing") && ConfMan.getBool("font_cjk_antialiasing");
 	// extra spacing in pixels: between characters, between CJK and Latin
 	// letters / digits, between lines
-	int letterSpacing = ConfMan.hasKey("font_cjk_letter_spacing") ? ConfMan.getInt("font_cjk_letter_spacing") : 0;
-	int latinSpacing = ConfMan.hasKey("font_cjk_latin_spacing") ? ConfMan.getInt("font_cjk_latin_spacing") : 0;
+	int letterSpacing = ConfMan.hasKey("font_cjk_letter_spacing") ? ConfMan.getInt("font_cjk_letter_spacing") : 1;
+	int latinSpacing = ConfMan.hasKey("font_cjk_latin_spacing") ? ConfMan.getInt("font_cjk_latin_spacing") : 3;
 	int lineSpacing = ConfMan.hasKey("font_cjk_line_spacing") ? ConfMan.getInt("font_cjk_line_spacing") : 0;
 
 	ConfigFileManager *config = ConfigFileManager::get_instance();
@@ -525,8 +525,8 @@ void GameData::setupCategoryFonts(const Common::HashMap<int, uint32> &colours,
 	Common::String dialogueHDFile = ConfMan.hasKey("font_cjk_hd_file") && !ConfMan.get("font_cjk_hd_file").empty()
 	                                ? ConfMan.get("font_cjk_hd_file") : "jf-openhuninn-2.1.ttf";
 	double size = numberSetting("font_cjk_size", 12);
-	double letter = numberSetting("font_cjk_letter_spacing", 0);
-	double latin = numberSetting("font_cjk_latin_spacing", 0);
+	double letter = numberSetting("font_cjk_letter_spacing", 1);
+	double latin = numberSetting("font_cjk_latin_spacing", 3);
 	double line = numberSetting("font_cjk_line_spacing", 0);
 	bool aa = ConfMan.hasKey("font_cjk_antialiasing") && ConfMan.getBool("font_cjk_antialiasing");
 
@@ -580,8 +580,8 @@ void GameData::setupCategoryFonts(const Common::HashMap<int, uint32> &colours,
 		// font of the layer when not set
 		if (!ownFile) {
 			cSize = numberSetting(key + "size", c._size > 0 ? c._size : numberSetting("font_cjk_hd_size", size));
-			cLetter = numberSetting(key + "letter_spacing", numberSetting("font_cjk_hd_letter_spacing", letter));
-			cLatin = numberSetting(key + "latin_spacing", numberSetting("font_cjk_hd_latin_spacing", latin));
+			cLetter = numberSetting(key + "letter_spacing", numberSetting("font_cjk_hd_letter_spacing", 0.3));
+			cLatin = numberSetting(key + "latin_spacing", numberSetting("font_cjk_hd_latin_spacing", 1));
 			cLine = numberSetting(key + "line_spacing", numberSetting("font_cjk_hd_line_spacing", line));
 		}
 		bool hdAA = ConfMan.hasKey(key + "antialiasing") ? ConfMan.getBool(key + "antialiasing")
@@ -611,8 +611,8 @@ static double hdFontSetting(const char *key, double def, bool useSettings = true
 
 // The CJK font for the high-res text layer, which draws in window pixels.
 // Its settings (font_cjk_hd_*) are in game pixels like the others, so they
-// do not depend on the window size. By default: jf open huninn, with the
-// size and spacing of the game font. With useSettings false, the size and
+// do not depend on the window size. By default: jf open huninn, the size
+// of the game font, letter spacing 0.3 and CJK-Latin spacing 1. With useSettings false, the size and
 // spacing are the given ones.
 void GameData::setupHDCJKOverride(int fontnum, int pointsize, uint32 col32, int border,
 		int letterSpacing, int latinSpacing, int lineSpacing, bool useSettings) {
@@ -631,8 +631,8 @@ void GameData::setupHDCJKOverride(int fontnum, int pointsize, uint32 col32, int 
 	// a border of a whole game pixel looks too heavy
 	double borderSetting = hdFontSetting("font_cjk_hd_border", border * 0.5);
 	int hdBorder = borderSetting > 0 ? MAX(1, (int)(borderSetting * sx + 0.5)) : 0;
-	int hdLetter = (int)(hdFontSetting("font_cjk_hd_letter_spacing", letterSpacing, useSettings) * sx + 0.5);
-	int hdLatin = (int)(hdFontSetting("font_cjk_hd_latin_spacing", latinSpacing, useSettings) * sx + 0.5);
+	int hdLetter = (int)(hdFontSetting("font_cjk_hd_letter_spacing", useSettings ? 0.3 : letterSpacing, useSettings) * sx + 0.5);
+	int hdLatin = (int)(hdFontSetting("font_cjk_hd_latin_spacing", useSettings ? 1 : latinSpacing, useSettings) * sx + 0.5);
 	// the font adds 2 pixels between lines
 	int hdLine = (int)((2 + hdFontSetting("font_cjk_hd_line_spacing", lineSpacing, useSettings)) * sy + 0.5) - 2;
 
