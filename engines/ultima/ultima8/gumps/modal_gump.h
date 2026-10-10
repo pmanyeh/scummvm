@@ -49,6 +49,10 @@ public:
 
 	void Close(bool no_del = false) override;
 
+	bool coversHighResText() const override {
+		return true;
+	}
+
 	bool PointOnGump(int mx, int my) override;
 	Gump *FindGump(int mx, int my) override;
 	uint16 TraceObjId(int32 mx, int32 my) override;

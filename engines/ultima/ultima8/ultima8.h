@@ -105,6 +105,15 @@ private:
 	};
 	Common::Array<HDOcclusion> _hdOcclusions;
 	uint _hdOcclusionCount;
+	//! Opaque gumps, in painting order: the text of the occlusions saved
+	//! before each is hidden within its rect
+	struct HDCover {
+		Common::Rect _rect;
+		uint _occlusionCount; //!< number of occlusions saved before it
+	};
+	Common::Array<HDCover> _hdCovers;
+	//! Restore window pixels from the game for game pixel (x, y)
+	void restoreHDPixel(int x, int y);
 	Mouse *_mouse;
 	PaletteManager *_paletteManager;
 	GameData *_gameData;
@@ -227,6 +236,8 @@ public:
 	//! after its text is drawn, the pixels other gumps painted over are
 	//! restored from the game.
 	void saveHDOcclusion(const Gump *gump, RenderSurface *surf, Common::Rect32 rect);
+	//! An opaque gump (see Gump::coversHighResText) is being painted
+	void addHDCover(RenderSurface *surf, Common::Rect32 rect);
 	void restoreHDOcclusion(const Gump *gump);
 
 	//! Convert a length from high-res text pixels to game pixels (rounded up)

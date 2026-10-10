@@ -166,6 +166,12 @@ public:
 		return false;
 	}
 
+	//! True if the gump hides all high-res text painted before it within
+	//! its dims, even where it paints the same pixels (an opaque window)
+	virtual bool        coversHighResText() const {
+		return false;
+	}
+
 protected:
 
 	//! Overloadable method to Paint just this Gump (RenderSurface is relative to this)

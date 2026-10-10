@@ -40,6 +40,11 @@ public:
 
 	~TargetGump() override;
 
+	// only a mouse cursor
+	bool coversHighResText() const override {
+		return false;
+	}
+
 	bool PointOnGump(int mx, int my) override;
 	void InitGump(Gump *newparent, bool take_focus = true) override;
 	void Close(bool no_del = false) override;

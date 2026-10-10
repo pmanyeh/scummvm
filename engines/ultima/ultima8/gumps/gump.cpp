@@ -229,14 +229,21 @@ void Gump::Paint(RenderSurface *surf, int32 lerp_factor, bool scaled) {
 	new_rect.clip(old_rect);
 	surf->setClippingRect(new_rect);
 
-	// Paint This
-	PaintThis(surf, lerp_factor, scaled);
-
-	// High-res text is drawn later: remember what is under it
-	if (scaled && hasHighResText()) {
+	// High-res text is drawn later: remember what covers it, and what is
+	// under it
+	if (scaled && (coversHighResText() || hasHighResText())) {
 		Common::Rect32 rect(_dims);
 		GumpRectToScreenSpace(rect, ROUND_OUTSIDE);
-		Ultima8Engine::get_instance()->saveHDOcclusion(this, surf, rect);
+		Ultima8Engine *engine = Ultima8Engine::get_instance();
+		if (coversHighResText())
+			engine->addHDCover(surf, rect);
+		// Paint This
+		PaintThis(surf, lerp_factor, scaled);
+		if (hasHighResText())
+			engine->saveHDOcclusion(this, surf, rect);
+	} else {
+		// Paint This
+		PaintThis(surf, lerp_factor, scaled);
 	}
 
 	// Paint children
