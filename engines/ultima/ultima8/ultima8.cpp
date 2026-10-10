@@ -1619,7 +1619,7 @@ bool Ultima8Engine::newGame(int saveSlot) {
 	if (saveSlot == -1)
 		ConfMan.setInt("lastSave", -1);
 
-	QuickBarGump::createIfEnabled();
+	QuickBarGump::updateBars();
 
 	return true;
 }
@@ -1665,13 +1665,7 @@ void Ultima8Engine::applyGameSettings() {
 	_gameData->setupFontOverrides();
 
 	// the quick bar can be turned on and off in the game options
-	if (_desktopGump) {
-		Gump *bar = _desktopGump->FindGump<QuickBarGump>();
-		if (bar && !ConfMan.getBool("quick_bar"))
-			bar->Close();
-		else if (!bar)
-			QuickBarGump::createIfEnabled();
-	}
+	QuickBarGump::updateBars();
 
 	_frameSkip = ConfMan.getBool("frameSkip");
 	_frameLimit = ConfMan.getBool("frameLimit");
@@ -1852,7 +1846,7 @@ Common::Error Ultima8Engine::loadGameStream(Common::SeekableReadStream *stream) 
 	delete sg;
 
 	// not saved: created again
-	QuickBarGump::createIfEnabled();
+	QuickBarGump::updateBars();
 
 	return Common::kNoError;
 }

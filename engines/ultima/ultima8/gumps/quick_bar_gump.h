@@ -29,16 +29,24 @@ namespace Ultima {
 namespace Ultima8 {
 
 /**
- * Icons for the actions of the keyboard shortcuts (backpack, keyring,
- * save, ...) in the bottom right corner, shown while the mouse is there.
- * Like the bars of Exult. Not saved: created again for every game
- * (quick_bar setting, U8 only; quick_bar_autohide=false keeps it shown).
+ * Icons in a bottom corner, shown while the mouse is there, like the bars
+ * of Exult (U8 only). Not saved: created again for every game.
+ * - ACTIONS, bottom right: the actions of the keyboard shortcuts (backpack,
+ *   keyring, save, ...); quick_bar setting.
+ * - CHEATS, bottom left: the cheats of the console (max stats, heal,
+ *   invincibility, hack mover); only while cheats are enabled.
+ * quick_bar_autohide=false keeps them shown.
  */
 class QuickBarGump : public Gump {
 public:
 	ENABLE_RUNTIME_CLASSTYPE()
 
-	QuickBarGump();
+	enum Kind {
+		ACTIONS,
+		CHEATS
+	};
+
+	QuickBarGump(Kind kind = ACTIONS);
 	~QuickBarGump() override;
 
 	void InitGump(Gump *newparent, bool take_focus = false) override;
@@ -53,17 +61,27 @@ public:
 	Gump *onMouseMotion(int32 mx, int32 my) override;
 	void onMouseLeft() override;
 
-	//! Create the bar if it is enabled and not there yet
-	static void createIfEnabled();
+	//! Create or close the bars as the settings say
+	static void updateBars();
 
 private:
+	//! The bar of this kind on the desktop, or nullptr
+	static QuickBarGump *find(Kind kind);
+	//! True if the bar can be used now (the cheats bar needs cheats)
+	bool isAvailable() const;
 	//! Icon under the point (gump coordinates), or -1
 	int iconAt(int32 x, int32 y) const;
 	void paintIcon(RenderSurface *surf, int index, const Common::Rect32 &cell);
+	void doIcon(int index);
 	void setHover(int index);
-	//! Keep the bar next to the bars of health and mana, if they are open
+	//! Keep the bar in its corner, next to the bars of health and mana
 	void updatePosition();
 
+	static uint16 _barIds[2]; //!< object ids of the bars, by kind
+
+	Kind _kind;
+	int _columns, _rows;
+	int32 _cellsX; //!< left of the icons; the rest of the width is for the tooltip
 	bool _shown;
 	int _hover;
 	int _pressed;

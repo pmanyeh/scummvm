@@ -22,6 +22,7 @@
 #include "ultima/ultima8/gumps/quick_bar_gump.h"
 
 #include "common/config-manager.h"
+#include "ultima/ultima8/audio/audio_process.h"
 #include "ultima/ultima8/games/game_data.h"
 #include "ultima/ultima8/gfx/gump_shape_archive.h"
 #include "ultima/ultima8/gfx/main_shape_archive.h"
@@ -46,66 +47,109 @@ namespace {
 
 const int CELL_W = 22;
 const int CELL_H = 20;
-const int COLUMNS = 5;
-const int ROWS = 2;
 const int TIP_H = 14;     // tooltip row above the icons
-const int BAR_W = COLUMNS * CELL_W;
-const int BAR_H = ROWS * CELL_H;
+const int TIP_W = 150;    // the tooltip may be wider than the icons
 const int MARGIN = 2;     // from the screen edge or the health bars
 const int SHOW_ZONE = 6;  // the bar shows within this distance of it
 const int TIP_FONT = 0;
 
-enum IconArt { ART_MAIN, ART_GUMP, ART_MAP };
+enum IconArt { ART_MAIN, ART_GUMP, ART_MOUSE, ART_MAP, ART_ARROW };
+
+enum Cheat { CHEAT_NONE, CHEAT_MAXSTATS, CHEAT_HEAL, CHEAT_INVINCIBLE, CHEAT_HACKMOVER };
 
 struct Icon {
-	KeybindingAction _action;
+	KeybindingAction _action; //!< for the ACTIONS bar
+	Cheat _cheat;             //!< for the CHEATS bar
 	IconArt _art;
 	int _shape, _frame;
 	const char *_name; //!< English, translated in the "ui" context
-	const char *_key;  //!< default key
+	const char *_key;  //!< default key, or nullptr
 };
 
 // Pictures from the game: backpack 529, helmet 531, sword 243 (the
 // weapon overlay), book 613, keyring 79, recall 833, bedroll 534
-const Icon ICONS[COLUMNS * ROWS] = {
-	{ ACTION_BACKPACK,  ART_MAIN, 529, 0,  "Backpack",   "I" },
-	{ ACTION_INVENTORY, ART_MAIN, 531, 1,  "Inventory",  "Z" },
-	{ ACTION_COMBAT,    ART_MAIN, 243, 68, "Combat",     "C" },
-	{ ACTION_MINIMAP,   ART_MAP,  0,   0,  "Map",        "M" },
-	{ ACTION_MENU,      ART_MAIN, 613, 10, "Menu",       "Esc" },
-	{ ACTION_KEYRING,   ART_MAIN, 79,  0,  "Keyring",    "K" },
-	{ ACTION_RECALL,    ART_MAIN, 833, 0,  "Recall",     "R" },
-	{ ACTION_BEDROLL,   ART_MAIN, 534, 0,  "Bedroll",    "B" },
-	{ ACTION_SAVE,      ART_MAIN, 613, 2,  "Save Game",  "F5" },
-	{ ACTION_LOAD,      ART_MAIN, 613, 4,  "Load Game",  "F7" }
+const Icon ACTION_ICONS[] = {
+	{ ACTION_BACKPACK,  CHEAT_NONE, ART_MAIN, 529, 0,  "Backpack",   "I" },
+	{ ACTION_INVENTORY, CHEAT_NONE, ART_MAIN, 531, 1,  "Inventory",  "Z" },
+	{ ACTION_COMBAT,    CHEAT_NONE, ART_MAIN, 243, 68, "Combat",     "C" },
+	{ ACTION_MINIMAP,   CHEAT_NONE, ART_MAP,  0,   0,  "Map",        "M" },
+	{ ACTION_MENU,      CHEAT_NONE, ART_MAIN, 613, 10, "Menu",       "Esc" },
+	{ ACTION_KEYRING,   CHEAT_NONE, ART_MAIN, 79,  0,  "Keyring",    "K" },
+	{ ACTION_RECALL,    CHEAT_NONE, ART_MAIN, 833, 0,  "Recall",     "R" },
+	{ ACTION_BEDROLL,   CHEAT_NONE, ART_MAIN, 534, 0,  "Bedroll",    "B" },
+	{ ACTION_SAVE,      CHEAT_NONE, ART_MAIN, 613, 2,  "Save Game",  "F5" },
+	{ ACTION_LOAD,      CHEAT_NONE, ART_MAIN, 613, 4,  "Load Game",  "F7" }
 };
+
+// red potion 766, round shield 539, the grabbing hand of the mouse cursors
+const Icon CHEAT_ICONS[] = {
+	{ ACTION_NONE, CHEAT_MAXSTATS,   ART_ARROW, 0,   0,  "Max Stats",     nullptr },
+	{ ACTION_NONE, CHEAT_HEAL,       ART_MAIN,  766, 1,  "Heal",          nullptr },
+	{ ACTION_NONE, CHEAT_INVINCIBLE, ART_MAIN,  539, 2,  "Invincibility", nullptr },
+	{ ACTION_NONE, CHEAT_HACKMOVER,  ART_MOUSE, 0,   36, "Move Anything", nullptr }
+};
+
+const Icon *iconsOf(QuickBarGump::Kind kind) {
+	return kind == QuickBarGump::CHEATS ? CHEAT_ICONS : ACTION_ICONS;
+}
 
 } // End of anonymous namespace
 
-QuickBarGump::QuickBarGump()
-	: Gump(0, 0, BAR_W, TIP_H + BAR_H, 0, FLAG_DONT_SAVE, LAYER_ABOVE_NORMAL),
+QuickBarGump::QuickBarGump(Kind kind)
+	: Gump(0, 0, 0, 0, 0, FLAG_DONT_SAVE, LAYER_ABOVE_NORMAL), _kind(kind),
 	  _shown(false), _hover(-1), _pressed(-1), _tooltipId(0) {
+	if (kind == CHEATS) {
+		_columns = ARRAYSIZE(CHEAT_ICONS);
+		_rows = 1;
+	} else {
+		_columns = 5;
+		_rows = 2;
+	}
+	int32 barW = _columns * CELL_W;
+	int32 width = MAX<int32>(barW, TIP_W);
+	// the icons in the corner, the tooltip extending away from it
+	_cellsX = kind == CHEATS ? 0 : width - barW;
+	_dims = Common::Rect32(0, 0, width, TIP_H + _rows * CELL_H);
 }
 
 QuickBarGump::~QuickBarGump() {
 }
 
-void QuickBarGump::createIfEnabled() {
+uint16 QuickBarGump::_barIds[2] = { 0, 0 };
+
+QuickBarGump *QuickBarGump::find(Kind kind) {
+	// the object id may have been given to another gump since
+	QuickBarGump *bar = dynamic_cast<QuickBarGump *>(getGump(_barIds[kind]));
+	if (bar && bar->_kind == kind && !bar->IsClosing())
+		return bar;
+	return nullptr;
+}
+
+void QuickBarGump::updateBars() {
 	ConfMan.registerDefault("quick_bar", true);
 	ConfMan.registerDefault("quick_bar_autohide", true);
-	if (!GAME_IS_U8 || !ConfMan.getBool("quick_bar"))
-		return;
-	Gump *desktop = Ultima8Engine::get_instance()->getDesktopGump();
-	if (!desktop || desktop->FindGump<QuickBarGump>())
+	if (!GAME_IS_U8 || !Ultima8Engine::get_instance()->getDesktopGump())
 		return;
 
-	Gump *bar = new QuickBarGump();
-	bar->InitGump(nullptr, false);
+	QuickBarGump *actions = find(ACTIONS);
+	if (actions && !ConfMan.getBool("quick_bar"))
+		actions->Close();
+	else if (!actions && ConfMan.getBool("quick_bar"))
+		(new QuickBarGump(ACTIONS))->InitGump(nullptr, false);
+
+	// always there, but only used while cheats are enabled
+	if (!find(CHEATS))
+		(new QuickBarGump(CHEATS))->InitGump(nullptr, false);
 }
 
 void QuickBarGump::InitGump(Gump *newparent, bool take_focus) {
 	Gump::InitGump(newparent, take_focus);
+	_barIds[_kind] = getObjId();
 	updatePosition();
+}
+
+bool QuickBarGump::isAvailable() const {
+	return _kind == ACTIONS || Ultima8Engine::get_instance()->areCheatsEnabled();
 }
 
 void QuickBarGump::updatePosition() {
@@ -113,21 +157,28 @@ void QuickBarGump::updatePosition() {
 	if (!desktop)
 		return;
 	Common::Rect32 screen = desktop->getDims();
-	int32 right = screen.right - MARGIN;
+	int32 barW = _columns * CELL_W;
+	int32 barH = _rows * CELL_H;
 	int32 bottom = screen.bottom - MARGIN;
 
+	if (_kind == CHEATS) {
+		Move(screen.left + MARGIN, bottom - barH - TIP_H);
+		return;
+	}
+
 	// the bars of health and mana (opened from the paperdoll)
+	int32 right = screen.right - MARGIN;
 	Gump *stats = desktop->FindGump<MiniStatsGump>();
 	if (stats && !stats->IsHidden() && !stats->IsClosing()) {
 		Common::Rect32 sr = stats->getDims();
 		stats->GumpRectToScreenSpace(sr);
-		if (sr.right > screen.right - BAR_W && sr.bottom > screen.bottom - BAR_H - TIP_H) {
+		if (sr.right > screen.right - barW && sr.bottom > screen.bottom - barH - TIP_H) {
 			right = sr.left - MARGIN;
 			bottom = MIN<int32>(sr.bottom, bottom);
 		}
 	}
 
-	Move(right - BAR_W, bottom - BAR_H - TIP_H);
+	Move(right - _dims.width(), bottom - barH - TIP_H);
 }
 
 void QuickBarGump::run() {
@@ -138,9 +189,10 @@ void QuickBarGump::run() {
 	int32 mx, my;
 	Mouse::get_instance()->getMouseCoords(mx, my);
 	ScreenSpaceToGump(mx, my);
-	Common::Rect32 zone(0, TIP_H, BAR_W, TIP_H + BAR_H);
+	Common::Rect32 zone(_cellsX, TIP_H, _cellsX + _columns * CELL_W, TIP_H + _rows * CELL_H);
 	zone.grow(SHOW_ZONE);
-	bool shown = zone.contains(mx, my) || !ConfMan.getBool("quick_bar_autohide");
+	bool shown = isAvailable() &&
+	             (zone.contains(mx, my) || !ConfMan.getBool("quick_bar_autohide"));
 	if (shown != _shown) {
 		_shown = shown;
 		if (!shown) {
@@ -151,9 +203,10 @@ void QuickBarGump::run() {
 }
 
 int QuickBarGump::iconAt(int32 x, int32 y) const {
-	if (x < 0 || x >= BAR_W || y < TIP_H || y >= TIP_H + BAR_H)
+	x -= _cellsX;
+	if (x < 0 || x >= _columns * CELL_W || y < TIP_H || y >= TIP_H + _rows * CELL_H)
 		return -1;
-	return (y - TIP_H) / CELL_H * COLUMNS + x / CELL_W;
+	return (y - TIP_H) / CELL_H * _columns + x / CELL_W;
 }
 
 bool QuickBarGump::PointOnGump(int mx, int my) {
@@ -185,13 +238,53 @@ void QuickBarGump::onMouseUp(int button, int32 mx, int32 my) {
 	int index = iconAt(gx, gy);
 	int pressed = _pressed;
 	_pressed = -1;
-	if (index < 0 || index != pressed)
-		return;
+	if (index >= 0 && index == pressed && isAvailable())
+		doIcon(index);
+}
 
-	// the same as the key
+void QuickBarGump::doIcon(int index) {
+	const Icon &icon = iconsOf(_kind)[index];
 	Ultima8Engine *engine = Ultima8Engine::get_instance();
-	engine->handleActionDown(ICONS[index]._action);
-	engine->handleActionUp(ICONS[index]._action);
+
+	if (icon._cheat == CHEAT_NONE) {
+		// the same as the key
+		engine->handleActionDown(icon._action);
+		engine->handleActionUp(icon._action);
+		return;
+	}
+
+	// the same as the console commands (Cheat::...)
+	MainActor *avatar = getMainActor();
+	if (!avatar)
+		return;
+	switch (icon._cheat) {
+	case CHEAT_MAXSTATS: {
+		avatar->setStr(25);
+		avatar->setDex(25);
+		avatar->setInt(25);
+		avatar->setHP(avatar->getMaxHP());
+		avatar->setMana(avatar->getMaxMana());
+		AudioProcess *audioproc = AudioProcess::get_instance();
+		if (audioproc)
+			audioproc->playSFX(0x36, 0x60, 1, 0);
+		break;
+	}
+	case CHEAT_HEAL:
+		avatar->setHP(avatar->getMaxHP());
+		avatar->setMana(avatar->getMaxMana());
+		break;
+	case CHEAT_INVINCIBLE:
+		if (avatar->hasActorFlags(Actor::ACT_INVINCIBLE))
+			avatar->clearActorFlag(Actor::ACT_INVINCIBLE);
+		else
+			avatar->setActorFlag(Actor::ACT_INVINCIBLE);
+		break;
+	case CHEAT_HACKMOVER:
+		engine->setHackMoverEnabled(!engine->isHackMoverEnabled());
+		break;
+	default:
+		break;
+	}
 }
 
 Gump *QuickBarGump::onMouseMotion(int32 mx, int32 my) {
@@ -217,9 +310,12 @@ void QuickBarGump::setHover(int index) {
 	if (index < 0)
 		return;
 
-	Common::String text = Localization::uiText(ICONS[index]._name, TIP_FONT);
-	text += Common::String::format(" (%s)", ICONS[index]._key);
-	TextWidget *tip = new TextWidget(0, 0, text, true, TIP_FONT, BAR_W, 0, Font::TEXT_RIGHT);
+	const Icon &icon = iconsOf(_kind)[index];
+	Common::String text = Localization::uiText(icon._name, TIP_FONT);
+	if (icon._key)
+		text += Common::String::format(" (%s)", icon._key);
+	TextWidget *tip = new TextWidget(0, 0, text, true, TIP_FONT, _dims.width(), 0,
+	                                 _kind == CHEATS ? Font::TEXT_LEFT : Font::TEXT_RIGHT);
 	tip->InitGump(this, false);
 	// bottom of the text on the top of the icons
 	Common::Rect32 d = tip->getDims();
@@ -231,20 +327,26 @@ void QuickBarGump::PaintThis(RenderSurface *surf, int32 lerp_factor, bool scaled
 	if (!_shown)
 		return;
 
-	for (int i = 0; i < COLUMNS * ROWS; i++) {
-		int32 x = (i % COLUMNS) * CELL_W;
-		int32 y = TIP_H + (i / COLUMNS) * CELL_H;
+	for (int i = 0; i < _columns * _rows; i++) {
+		int32 x = _cellsX + (i % _columns) * CELL_W;
+		int32 y = TIP_H + (i / _columns) * CELL_H;
 		Common::Rect32 cell(x, y, x + CELL_W, y + CELL_H);
 		paintIcon(surf, i, cell);
 	}
 }
 
 void QuickBarGump::paintIcon(RenderSurface *surf, int index, const Common::Rect32 &cell) {
-	const Icon &icon = ICONS[index];
+	const Icon &icon = iconsOf(_kind)[index];
 	MainActor *avatar = getMainActor();
-	bool active = icon._action == ACTION_COMBAT && avatar && avatar->isInCombat();
+	bool active = false;
+	if (icon._action == ACTION_COMBAT)
+		active = avatar && avatar->isInCombat();
+	else if (icon._cheat == CHEAT_INVINCIBLE)
+		active = avatar && avatar->hasActorFlags(Actor::ACT_INVINCIBLE);
+	else if (icon._cheat == CHEAT_HACKMOVER)
+		active = Ultima8Engine::get_instance()->isHackMoverEnabled();
 
-	// a dark, see-through square with a frame
+	// a dark, see-through square with a frame; red while switched on
 	Common::Rect32 inner(cell.left + 1, cell.top + 1, cell.right - 1, cell.bottom - 1);
 	surf->fillBlended(active ? TEX32_PACK_RGBA(0x80, 0x10, 0x10, 0xA0)
 	                         : TEX32_PACK_RGBA(0x10, 0x10, 0x18, 0xA0), inner);
@@ -268,9 +370,29 @@ void QuickBarGump::paintIcon(RenderSurface *surf, int index, const Common::Rect3
 		return;
 	}
 
+	if (icon._art == ART_ARROW) {
+		// a golden arrow pointing up, with a dark outline
+		int32 cx = cell.left + CELL_W / 2, top = cell.top + 3;
+		const uint32 dark = TEX32_PACK_RGB(0x40, 0x28, 0x08);
+		const uint32 gold = TEX32_PACK_RGB(0xF0, 0xC0, 0x30);
+		for (int row = 0; row < 7; row++) {
+			surf->fill32(dark, cx - row - 1, top + row, 2 * row + 2, 1);
+			if (row > 0)
+				surf->fill32(gold, cx - row, top + row, 2 * row, 1);
+		}
+		surf->fill32(dark, cx - 4, top + 7, 8, 7);
+		surf->fill32(gold, cx - 3, top + 7, 6, 6);
+		return;
+	}
+
 	GameData *gamedata = GameData::get_instance();
-	const Shape *shape = icon._art == ART_GUMP ? gamedata->getGumps()->getShape(icon._shape)
-	                                           : gamedata->getMainShapes()->getShape(icon._shape);
+	const Shape *shape;
+	if (icon._art == ART_GUMP)
+		shape = gamedata->getGumps()->getShape(icon._shape);
+	else if (icon._art == ART_MOUSE)
+		shape = gamedata->getMouse();
+	else
+		shape = gamedata->getMainShapes()->getShape(icon._shape);
 	if (!shape || icon._frame >= (int)shape->frameCount())
 		return;
 	const ShapeFrame *f = shape->getFrame(icon._frame);
