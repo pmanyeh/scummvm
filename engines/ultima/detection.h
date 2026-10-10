@@ -86,6 +86,7 @@ struct UltimaGameDescription {
 #define GAMEOPTION_HD_TEXT              GUIO_GAMEOPTIONS14
 #define GAMEOPTION_QUICK_BAR            GUIO_GAMEOPTIONS15
 #define GAMEOPTION_WALK_TO_USE         GUIO_GAMEOPTIONS16
+#define GAMEOPTION_ENGRAVING_CHINESE   GUIO_GAMEOPTIONS17
 
 } // End of namespace Ultima
 

@@ -23,6 +23,7 @@
 #define ULTIMA8_GAMES_GAMEDATA_H
 
 #include "common/array.h"
+#include "common/hashmap.h"
 #include "common/path.h"
 #include "common/str.h"
 #include "ultima/ultima8/gfx/frame_id.h"
@@ -118,6 +119,8 @@ private:
 	void setupTTFOverrides(const char *category, bool SJIS);
 	void setupJPOverrides();
 	bool setupCJKOverrides();
+	void setupCategoryFonts(const Common::HashMap<int, uint32> &colours,
+	                        const Common::HashMap<int, uint32> &borders);
 	void setupHDCJKOverride(int fontnum, int pointsize,
 	                        uint32 col32, int border, int letterSpacing,
 	                        int latinSpacing, int lineSpacing, bool useSettings = true);

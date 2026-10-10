@@ -110,6 +110,16 @@ public:
 	//! (game font 11) and plaques (10), in the colours of their shadows
 	static const unsigned int CJK_GRAVE_FONT = 65;
 	static const unsigned int CJK_PLAQUE_FONT = 66;
+	//! CJK fonts of their own for books, scrolls and the intro subtitles
+	//! (font_cjk_book_* ...); game fonts 9, 9 and 6 otherwise
+	static const unsigned int CJK_BOOK_FONT = 67;
+	static const unsigned int CJK_SCROLL_FONT = 68;
+	static const unsigned int CJK_INTRO_FONT = 69;
+
+	//! cjkFont if it is set up (localized), else gameFont
+	unsigned int localizedFont(unsigned int gameFont, unsigned int cjkFont) const {
+		return cjkFont < _overrides.size() && _overrides[cjkFont] ? cjkFont : gameFont;
+	}
 
 	//! get the high-res text layer's font for fontnum, or nullptr
 	Font *getHDFont(unsigned int fontnum) {

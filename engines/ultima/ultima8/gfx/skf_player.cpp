@@ -193,7 +193,10 @@ void SKFPlayer::run() {
 
 	Font *redfont;
 	Ultima8Engine *engine = Ultima8Engine::get_instance();
-	redfont = FontManager::get_instance()->getGameFont(6, true, engine->isHDText());
+	// the CJK font of the intro if localized (font_cjk_intro_*)
+	FontManager *fontmanager = FontManager::get_instance();
+	redfont = fontmanager->getGameFont(fontmanager->localizedFont(6, FontManager::CJK_INTRO_FONT),
+	                                   true, engine->isHDText());
 	// a high-res font has the pixels of the high-res text layer
 	bool highRes = engine->isHDText() && redfont->isHighRes();
 

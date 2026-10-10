@@ -222,6 +222,18 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 		}
 	},
 	{
+		GAMEOPTION_ENGRAVING_CHINESE,
+		{
+			// See ReadableGump::InitGump
+			_s("Chinese engravings (\xE5\xA2\x93\xE7\xA2\x91\xE7\x89\x8C\xE5\x8C\xBE\xE5\x85\xA8\xE4\xB8\xAD\xE6\x96\x87)"),
+			_s("Gravestones and plaques show the translation in place of the English engraving, instead of a subtitle below it."),
+			"engraving_chinese",
+			true,
+			0,
+			0
+		}
+	},
+	{
 		GAMEOPTION_ALWAYS_CHRISTMAS,
 		{
 			_s("Always enable Christmas easter-egg"),

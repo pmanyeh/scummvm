@@ -592,7 +592,7 @@ Common::Error Ultima8Engine::startupGame() {
 	ConfMan.registerDefault("cheat", false);
 	ConfMan.registerDefault("quick_bar", true);
 	ConfMan.registerDefault("walk_to_use", true);
-	ConfMan.registerDefault("engraving_chinese", false);
+	ConfMan.registerDefault("engraving_chinese", true);
 
 	bool loaded = _game->loadFiles();
 	if (!loaded)

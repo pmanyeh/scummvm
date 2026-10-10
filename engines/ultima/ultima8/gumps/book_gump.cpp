@@ -23,6 +23,7 @@
 #include "ultima/ultima8/gumps/book_gump.h"
 #include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/gumps/widgets/text_widget.h"
+#include "ultima/ultima8/gfx/fonts/font_manager.h"
 #include "ultima/ultima8/games/game_data.h"
 #include "ultima/ultima8/gfx/gump_shape_archive.h"
 #include "ultima/ultima8/usecode/uc_machine.h"
@@ -67,11 +68,13 @@ void BookGump::InitGump(Gump *newparent, bool take_focus) {
 	}
 
 	// Create the TextWidgets (NOTE: they _must_ have exactly the same _dims)
-	TextWidget *widget = new TextWidget(9, 5, _text, true, 9, 123, 129, Font::TEXT_LEFT, true); //!! constants
+	// the CJK font of books if localized (font_cjk_book_*)
+	int font = FontManager::get_instance()->localizedFont(9, FontManager::CJK_BOOK_FONT);
+	TextWidget *widget = new TextWidget(9, 5, _text, true, font, 123, 129, Font::TEXT_LEFT, true); //!! constants
 	widget->InitGump(this);
 	_textWidgetL = widget->getObjId();
 
-	widget = new TextWidget(150, 5, _text, true, 9, 123, 129, Font::TEXT_LEFT, true); //!! constants
+	widget = new TextWidget(150, 5, _text, true, font, 123, 129, Font::TEXT_LEFT, true); //!! constants
 	widget->InitGump(this);
 	_textWidgetR = widget->getObjId();
 	widget->setupNextText();

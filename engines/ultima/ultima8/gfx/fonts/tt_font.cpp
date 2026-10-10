@@ -36,6 +36,7 @@ TTFont::TTFont(Graphics::Font *font, uint32 rgb, int borderSize,
 		bool antiAliased, bool SJIS, bool utf8) :
 		_borderSize(borderSize), _ttfFont(font), _antiAliased(antiAliased), _SJIS(SJIS), _utf8(utf8),
 		_letterSpacing(0), _cjkLatinSpacing(0), _lineSpacing(0),
+		_shadow(false), _shadowColor(0), _shadowDx(0), _shadowDy(0),
 		_PF_RGBA(Graphics::PixelFormat(4, 8, 8, 8, 8, 24, 16, 8, 0)) {
 	_color = _PF_RGBA.RGBToColor((rgb >> 16) & 0xFF, (rgb >> 8) & 0xff, rgb & 0xff);
 
@@ -57,6 +58,65 @@ TTFont::TTFont(Graphics::Font *font, uint32 rgb, int borderSize,
 
 TTFont::~TTFont() {
 
+}
+
+void TTFont::setShadow(uint32 rgb, int dx, int dy) {
+	_shadow = true;
+	_shadowColor = _PF_RGBA.RGBToColor((rgb >> 16) & 0xFF, (rgb >> 8) & 0xff, rgb & 0xff);
+	_shadowDx = dx;
+	_shadowDy = dy;
+	_borderSize = MAX(_borderSize, MAX(ABS(dx), ABS(dy)));
+}
+
+void TTFont::blendLine(const Graphics::ManagedSurface &textSurf, uint32 *texBuf, int32 x0, int32 y0,
+		int32 resultWidth, int32 resultHeight, uint32 color) const {
+	uint8 cA, cR, cG, cB;
+	_PF_RGBA.colorToARGB(color, cA, cR, cG, cB);
+	for (int y = 0; y < textSurf.h; y++) {
+		const byte *surfrow = (const byte *)textSurf.getBasePtr(0, y);
+
+		int ty = y0 + y;
+		if (ty < 0 || ty >= resultHeight)
+			continue;
+		for (int x = 0; x < textSurf.w; x++) {
+			int tx = x0 + x;
+			if (tx < 0 || tx >= resultWidth)
+				continue;
+			if (_antiAliased) {
+				uint32 sColor = *((const uint32 *)(surfrow + x * 4));
+				uint8 sR, sG, sB, sA;
+				_PF_RGBA.colorToARGB(sColor, sA, sR, sG, sB);
+				if (color) {
+					sR = cR; sG = cG; sB = cB;
+					sColor = _PF_RGBA.ARGBToColor(sA, sR, sG, sB);
+				}
+
+				if (sA == 0xFF) {
+					texBuf[ty * resultWidth + tx] = sColor;
+				}
+				else if (sA != 0x00) {
+					// Blend color with destination
+					int32 dColor = texBuf[ty * resultWidth + tx];
+					uint8 dA, dR, dG, dB;
+					_PF_RGBA.colorToARGB(dColor, dA, dR, dG, dB);
+
+					double sAlpha = (double)sA / 255.0;
+					double dAlpha = (double)dA / 255.0;
+					dAlpha *= (1.0 - sAlpha);
+
+					dR = static_cast<uint8>((sR * sAlpha + dR * dAlpha) / (sAlpha + dAlpha));
+					dG = static_cast<uint8>((sG * sAlpha + dG * dAlpha) / (sAlpha + dAlpha));
+					dB = static_cast<uint8>((sB * sAlpha + dB * dAlpha) / (sAlpha + dAlpha));
+					dA = static_cast<uint8>(255. * (sAlpha + dAlpha));
+
+					texBuf[ty * resultWidth + tx] = _PF_RGBA.ARGBToColor(dA, dR, dG, dB);
+				}
+			}
+			else if (surfrow[x] == 1) {
+				texBuf[ty * resultWidth + tx] = color ? color : _color;
+			}
+		}
+	}
 }
 
 int TTFont::getHeight() {
@@ -309,52 +369,15 @@ RenderedText *TTFont::renderText(const Common::String &text, unsigned int &remai
 		};
 
 		// Add border within radius. Pixels on the edge are alpha blended if antialiased
-		if (_borderSize > 0) {
+		if (_borderSize > 0 && !_shadow) {
 			addTextBorder(textSurf, texBuf, line._dims, resultWidth, resultHeight, borderColor);
 		}
 
-		// render the text surface into our texture buffer
-		for (int y = 0; y < textSurf.h; y++) {
-			const byte *surfrow = (const byte *)textSurf.getBasePtr(0, y);
-
-			int ty = line._dims.top + y + _borderSize;
-			if (ty < 0 || ty >= resultHeight)
-				continue;
-			for (int x = 0; x < textSurf.w; x++) {
-				int tx = line._dims.left + x + _borderSize;
-				if (tx < 0 || tx >= resultWidth)
-					continue;
-				if (_antiAliased) {
-					uint32 sColor = *((const uint32 *)(surfrow + x * 4));
-					uint8 sR, sG, sB, sA;
-					_PF_RGBA.colorToARGB(sColor, sA, sR, sG, sB);
-
-					if (sA == 0xFF) {
-						texBuf[ty * resultWidth + tx] = sColor;
-					}
-					else if (sA != 0x00) {
-						// Blend color with destination
-						int32 dColor = texBuf[ty * resultWidth + tx];
-						uint8 dA, dR, dG, dB;
-						_PF_RGBA.colorToARGB(dColor, dA, dR, dG, dB);
-
-						double sAlpha = (double)sA / 255.0;
-						double dAlpha = (double)dA / 255.0;
-						dAlpha *= (1.0 - sAlpha);
-
-						dR = static_cast<uint8>((sR * sAlpha + dR * dAlpha) / (sAlpha + dAlpha));
-						dG = static_cast<uint8>((sG * sAlpha + dG * dAlpha) / (sAlpha + dAlpha));
-						dB = static_cast<uint8>((sB * sAlpha + dB * dAlpha) / (sAlpha + dAlpha));
-						dA = static_cast<uint8>(255. * (sAlpha + dAlpha));
-
-						texBuf[ty * resultWidth + tx] = _PF_RGBA.ARGBToColor(dA, dR, dG, dB);
-					}
-				}
-				else if (surfrow[x] == 1) {
-					texBuf[ty * resultWidth + tx] = _color;
-				}
-			}
-		}
+		// render the text surface into our texture buffer, over its shadow
+		int32 x0 = line._dims.left + _borderSize, y0 = line._dims.top + _borderSize;
+		if (_shadow)
+			blendLine(textSurf, texBuf, x0 + _shadowDx, y0 + _shadowDy, resultWidth, resultHeight, _shadowColor);
+		blendLine(textSurf, texBuf, x0, y0, resultWidth, resultHeight, 0);
 
 		if (line._cursor != Common::String::npos) {
 			assert(line._cursor <= line._text.size());

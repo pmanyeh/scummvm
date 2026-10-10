@@ -59,6 +59,13 @@ public:
 		_lineSpacing = line;
 	}
 
+	/**
+	 * Draw a copy of the text dx, dy pixels away in another colour under it,
+	 * instead of the border (like a carved or embossed letter). The border
+	 * size becomes the room around the text for it.
+	 */
+	void setShadow(uint32 rgb, int dx, int dy);
+
 	//! Width of a line of text, with the extra spacing
 	int textWidth(const Common::U32String &text) const;
 
@@ -96,6 +103,10 @@ protected:
 	int _cjkLatinSpacing;
 	int _lineSpacing;
 
+	bool _shadow;
+	uint32 _shadowColor;
+	int _shadowDx, _shadowDy;
+
 	bool hasSpacing() const {
 		return _letterSpacing != 0 || _cjkLatinSpacing != 0;
 	}
@@ -105,6 +116,9 @@ protected:
 	void drawSpaced(Graphics::ManagedSurface &surf, const Common::U32String &text, uint32 color) const;
 
 	void addTextBorder(Graphics::ManagedSurface &textSurf, uint32 *texBuf, const Common::Rect32 &dims, int32 resultWidth, int32 resultHeight, uint32 borderColor);
+	//! Blend a rendered line into the texture at (x, y); in color if not 0
+	void blendLine(const Graphics::ManagedSurface &textSurf, uint32 *texBuf, int32 x, int32 y,
+	               int32 resultWidth, int32 resultHeight, uint32 color) const;
 };
 
 } // End of namespace Ultima8

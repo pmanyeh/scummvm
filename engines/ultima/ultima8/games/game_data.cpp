@@ -30,6 +30,7 @@
 #include "ultima/ultima8/games/game_info.h"
 #include "ultima/ultima8/gfx/fonts/font_manager.h"
 #include "ultima/ultima8/gfx/fonts/font_shape_archive.h"
+#include "ultima/ultima8/gfx/fonts/tt_font.h"
 #include "ultima/ultima8/gfx/gump_shape_archive.h"
 #include "ultima/ultima8/gfx/main_shape_archive.h"
 #include "ultima/ultima8/gfx/palette_manager.h"
@@ -421,6 +422,7 @@ bool GameData::setupCJKOverrides() {
 	FontManager *fontmanager = FontManager::get_instance();
 	KeyMap ttfkeyvals = config->listKeyValues("game", "fontoverride");
 	Common::Array<int> replaced;
+	Common::HashMap<int, uint32> colours, borders; // of the replaced fonts
 	bool ok = true;
 	for (const auto &i : ttfkeyvals) {
 		int fontnum = atoi(i._key.c_str());
@@ -442,6 +444,8 @@ bool GameData::setupCJKOverrides() {
 			break;
 		}
 		replaced.push_back(fontnum);
+		colours[fontnum] = col32;
+		borders[fontnum] = border;
 
 		if (Ultima8Engine::get_instance()->isHDText()) {
 			setupHDCJKOverride(fontnum, pointsize, col32, border,
@@ -455,19 +459,7 @@ bool GameData::setupCJKOverrides() {
 	}
 
 	if (ok && !replaced.empty()) {
-		// engravings in Chinese: dark grey on stone, dark brown on brass,
-		// without a border, like the shadows of the carved letters
-		static const struct { unsigned int _font; uint32 _colour; } engravings[] = {
-			{ FontManager::CJK_GRAVE_FONT, 0x404040 },
-			{ FontManager::CJK_PLAQUE_FONT, 0x6A4A1C }
-		};
-		for (const auto &e : engravings) {
-			fontmanager->addCJKOverride(e._font, filename, pointsize, e._colour, 0, antialiasing,
-			                            letterSpacing, latinSpacing, lineSpacing);
-			if (Ultima8Engine::get_instance()->isHDText())
-				setupHDCJKOverride(e._font, pointsize, e._colour, 0,
-				                   letterSpacing, latinSpacing, lineSpacing);
-		}
+		setupCategoryFonts(colours, borders);
 		return true;
 	}
 
@@ -475,6 +467,139 @@ bool GameData::setupCJKOverrides() {
 		fontmanager->removeOverride(fontnum);
 	setupTTFOverrides("game", false);
 	return false;
+}
+
+// A setting as a colour (RRGGBB, with or without #), or def
+static uint32 colourSetting(const Common::String &key, uint32 def) {
+	if (!ConfMan.hasKey(key) || ConfMan.get(key).empty())
+		return def;
+	Common::String v = ConfMan.get(key);
+	v.trim();
+	if (v.hasPrefix("#"))
+		v.deleteChar(0);
+	return (uint32)strtoul(v.c_str(), nullptr, 16);
+}
+
+// A number setting, or def
+static double numberSetting(const Common::String &key, double def) {
+	if (!ConfMan.hasKey(key) || ConfMan.get(key).empty())
+		return def;
+	return atof(ConfMan.get(key).c_str());
+}
+
+// Fonts of their own for kinds of text (books, scrolls, the intro,
+// gravestones, plaques), set with font_cjk_<kind>_* in game pixels:
+// file, size, color, antialiasing, letter_spacing, latin_spacing,
+// line_spacing, border, shadow_color (none: no shadow), shadow_x, shadow_y.
+// Unset values are those of the dialogue font; engravings have their own
+// defaults (a carved look).
+void GameData::setupCategoryFonts(const Common::HashMap<int, uint32> &colours,
+		const Common::HashMap<int, uint32> &borders) {
+	static const struct Category {
+		const char *_name;
+		unsigned int _font;
+		int _gameFont;       //!< colour and border from its [fontoverride], or -1
+		double _size;        //!< 0: the dialogue size
+		uint32 _colour;
+		int _border;         //!< -1: from _gameFont
+		uint32 _shadow;      //!< 0: none
+		const char *_file;   //!< used when found, or nullptr
+	} categories[] = {
+		{ "book", FontManager::CJK_BOOK_FONT, 9, 0, 0, -1, 0, nullptr },
+		{ "scroll", FontManager::CJK_SCROLL_FONT, 9, 0, 0, -1, 0, nullptr },
+		{ "intro", FontManager::CJK_INTRO_FONT, 6, 0, 0, -1, 0, nullptr },
+		// dark letters with the light edge of a carving
+		{ "grave", FontManager::CJK_GRAVE_FONT, -1, 20, 0x404040, 0, 0xAEAEAE, "WangHanZongWeiBeiTiFan-2.ttf" },
+		{ "plaque", FontManager::CJK_PLAQUE_FONT, -1, 20, 0x6A4A1C, 0, 0xFFDB61, "WangHanZongWeiBeiTiFan-2.ttf" }
+	};
+
+	Ultima8Engine *engine = Ultima8Engine::get_instance();
+	FontManager *fontmanager = FontManager::get_instance();
+	const bool hd = engine->isHDText();
+	const double sx = engine->getHDScaleX() / 65536.0;
+	const double sy = engine->getHDScaleY() / 65536.0;
+
+	// the dialogue fonts, of the game and of the high-res text layer
+	Common::String dialogueFile = ConfMan.hasKey("font_cjk_file") && !ConfMan.get("font_cjk_file").empty()
+	                              ? ConfMan.get("font_cjk_file") : "Cubic_11.ttf";
+	Common::String dialogueHDFile = ConfMan.hasKey("font_cjk_hd_file") && !ConfMan.get("font_cjk_hd_file").empty()
+	                                ? ConfMan.get("font_cjk_hd_file") : "jf-openhuninn-2.1.ttf";
+	double size = numberSetting("font_cjk_size", 12);
+	double letter = numberSetting("font_cjk_letter_spacing", 0);
+	double latin = numberSetting("font_cjk_latin_spacing", 0);
+	double line = numberSetting("font_cjk_line_spacing", 0);
+	bool aa = ConfMan.hasKey("font_cjk_antialiasing") && ConfMan.getBool("font_cjk_antialiasing");
+
+	auto scaled = [](double v, double s) {
+		int r = (int)(v * s + (v < 0 ? -0.5 : 0.5));
+		return r == 0 && v != 0 ? (v < 0 ? -1 : 1) : r;
+	};
+
+	for (const Category &c : categories) {
+		Common::String key = Common::String("font_cjk_") + c._name + "_";
+		bool ownFile = ConfMan.hasKey(key + "file") && !ConfMan.get(key + "file").empty();
+		Common::String file = ownFile ? ConfMan.get(key + "file") : "";
+		if (!ownFile && c._file && Common::File::exists(Common::Path(c._file))) {
+			file = c._file;
+			ownFile = true;
+		}
+
+		uint32 colour = c._colour, border = c._border >= 0 ? c._border : 1;
+		if (c._gameFont >= 0 && colours.contains(c._gameFont)) {
+			colour = colours[c._gameFont];
+			border = borders[c._gameFont];
+		}
+		colour = colourSetting(key + "color", colour);
+		double cBorder = numberSetting(key + "border", border);
+		uint32 shadow = c._shadow;
+		if (ConfMan.hasKey(key + "shadow_color"))
+			shadow = ConfMan.get(key + "shadow_color") == "none" ? 0 : colourSetting(key + "shadow_color", 0);
+		double shadowX = numberSetting(key + "shadow_x", 1);
+		double shadowY = numberSetting(key + "shadow_y", 1);
+
+		// the game's resolution
+		double cSize = numberSetting(key + "size", c._size > 0 ? c._size : size);
+		bool cAA = ConfMan.hasKey(key + "antialiasing") ? ConfMan.getBool(key + "antialiasing")
+		           : (ownFile ? true : aa);
+		double cLetter = numberSetting(key + "letter_spacing", letter);
+		double cLatin = numberSetting(key + "latin_spacing", latin);
+		double cLine = numberSetting(key + "line_spacing", line);
+		Common::Path path(ownFile ? file : dialogueFile);
+		if (fontmanager->addCJKOverride(c._font, path, (int)(cSize + 0.5), colour, (int)(cBorder + 0.5),
+		                                cAA, (int)(cLetter + 0.5), (int)(cLatin + 0.5), (int)(cLine + 0.5))) {
+			TTFont *font = dynamic_cast<TTFont *>(fontmanager->getGameFont(c._font, true));
+			if (font && shadow)
+				font->setShadow(shadow, scaled(shadowX, 1), scaled(shadowY, 1));
+		} else {
+			warning("failed to setup CJK font %s for %s", path.toString().c_str(), c._name);
+		}
+
+		if (!hd)
+			continue;
+		// the high-res text layer: the same in window pixels, the dialogue
+		// font of the layer when not set
+		if (!ownFile) {
+			cSize = numberSetting(key + "size", c._size > 0 ? c._size : numberSetting("font_cjk_hd_size", size));
+			cLetter = numberSetting(key + "letter_spacing", numberSetting("font_cjk_hd_letter_spacing", letter));
+			cLatin = numberSetting(key + "latin_spacing", numberSetting("font_cjk_hd_latin_spacing", latin));
+			cLine = numberSetting(key + "line_spacing", numberSetting("font_cjk_hd_line_spacing", line));
+		}
+		bool hdAA = ConfMan.hasKey(key + "antialiasing") ? ConfMan.getBool(key + "antialiasing")
+		            : (!ConfMan.hasKey("font_cjk_hd_antialiasing") || ConfMan.getBool("font_cjk_hd_antialiasing"));
+		// a border of a whole game pixel looks too heavy
+		double hdBorderSetting = ConfMan.hasKey(key + "border") ? cBorder : cBorder * 0.5;
+		int hdBorder = hdBorderSetting > 0 ? MAX(1, (int)(hdBorderSetting * sx + 0.5)) : 0;
+		Common::Path hdPath(ownFile ? file : dialogueHDFile);
+		if (fontmanager->addCJKOverride(c._font, hdPath, (int)(cSize * sx + 0.5), colour, hdBorder, hdAA,
+		                                (int)(cLetter * sx + 0.5), (int)(cLatin * sx + 0.5),
+		                                (int)((2 + cLine) * sy + 0.5) - 2, true)) {
+			TTFont *font = dynamic_cast<TTFont *>(fontmanager->getHDFont(c._font));
+			if (font && shadow)
+				font->setShadow(shadow, scaled(shadowX, sx), scaled(shadowY, sy));
+		} else {
+			warning("failed to setup high-res CJK font %s for %s", hdPath.toString().c_str(), c._name);
+		}
+	}
 }
 
 // A setting of the high-res CJK font, in game pixels (decimals allowed)
