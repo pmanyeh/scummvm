@@ -19,6 +19,7 @@
  *
  */
 
+#include "common/config-manager.h"
 #include "ultima/ultima.h"
 #include "ultima/ultima8/gumps/game_map_gump.h"
 #include "ultima/ultima8/gumps/gump_notify_process.h"
@@ -49,14 +50,14 @@ int GameMapGump::_gridlines = 0;
 
 GameMapGump::GameMapGump() :
 	Gump(), _displayDragging(false), _displayList(0), _draggingShape(0),
-		_draggingFrame(0), _draggingFlags(0) {
+		_draggingFrame(0), _draggingFlags(0), _walkToUseItem(0), _walkToUsePid(0) {
 	_displayList = new ItemSorter(2048);
 }
 
 GameMapGump::GameMapGump(int x, int y, int width, int height) :
 		Gump(x, y, width, height, 0, FLAG_DONT_SAVE | FLAG_CORE_GUMP, LAYER_GAMEMAP),
 		_displayList(0), _displayDragging(false), _draggingShape(0), _draggingFrame(0),
-		_draggingFlags(0) {
+		_draggingFlags(0), _walkToUseItem(0), _walkToUsePid(0) {
 	// Offset the gump. We want 0,0 to be the centre
 	_dims.moveTo(-_dims.width() / 2, -_dims.height() / 2);
 
@@ -362,8 +363,9 @@ void GameMapGump::onMouseDouble(int button, int32 mx, int32 my) {
 			if (dynamic_cast<Actor *>(item) ||
 			        avatar->canReach(item, range)) {
 				// call the 'use' event
+				cancelWalkToUse();
 				item->use();
-			} else {
+			} else if (!walkToUse(item)) {
 				Mouse::get_instance()->flashCrossCursor();
 			}
 		}
@@ -372,6 +374,63 @@ void GameMapGump::onMouseDouble(int button, int32 mx, int32 my) {
 	default:
 		break;
 	}
+}
+
+void GameMapGump::run() {
+	Gump::run();
+	checkWalkToUse();
+}
+
+bool GameMapGump::walkToUse(Item *item) {
+	ConfMan.registerDefault("walk_to_use", true);
+	if (!GAME_IS_U8 || !ConfMan.getBool("walk_to_use"))
+		return false;
+
+	MainActor *avatar = getMainActor();
+	Kernel *kernel = Kernel::get_instance();
+	cancelWalkToUse();
+	kernel->killProcesses(avatar->getObjId(), PathfinderProcess::PATHFINDER_PROC_TYPE, true);
+	_walkToUsePid = kernel->addProcess(new PathfinderProcess(avatar, item->getObjId()));
+	_walkToUseItem = item->getObjId();
+	return true;
+}
+
+void GameMapGump::cancelWalkToUse() {
+	if (!_walkToUseItem)
+		return;
+	Process *p = Kernel::get_instance()->getProcess(_walkToUsePid);
+	if (p && !p->is_terminated())
+		p->fail();
+	_walkToUseItem = 0;
+	_walkToUsePid = 0;
+}
+
+void GameMapGump::checkWalkToUse() {
+	if (!_walkToUseItem)
+		return;
+
+	Ultima8Engine *engine = Ultima8Engine::get_instance();
+	MainActor *avatar = getMainActor();
+	Item *item = getItem(_walkToUseItem);
+	AvatarMoverProcess *mover = engine->getAvatarMoverProcess();
+	// the player moves, fights or talks
+	if (!avatar || !item || avatar->isInCombat() || engine->isAvatarInStasis() ||
+	        (mover && mover->hasMovementFlags(AvatarMoverProcess::MOVE_ANY_DIRECTION))) {
+		cancelWalkToUse();
+		return;
+	}
+
+	// still walking
+	Process *p = Kernel::get_instance()->getProcess(_walkToUsePid);
+	if (p && !p->is_terminated())
+		return;
+
+	_walkToUseItem = 0;
+	_walkToUsePid = 0;
+	if (avatar->canReach(item, 128)) // the range of onMouseDouble
+		item->use();
+	else
+		avatar->doAnim(Animation::shakeHead, avatar->getDir());
 }
 
 void GameMapGump::IncSortOrder(int count) {

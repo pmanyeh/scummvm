@@ -210,6 +210,18 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 		}
 	},
 	{
+		GAMEOPTION_WALK_TO_USE,
+		{
+			// See GameMapGump::walkToUse
+			_s("Walk to use (\xE8\x87\xAA\xE5\x8B\x95\xE8\xB5\xB0\xE8\xBF\x91\xE4\xBD\xBF\xE7\x94\xA8)"),
+			_s("Double-clicking an item out of reach makes the Avatar walk to it and use it."),
+			"walk_to_use",
+			true,
+			0,
+			0
+		}
+	},
+	{
 		GAMEOPTION_ALWAYS_CHRISTMAS,
 		{
 			_s("Always enable Christmas easter-egg"),

@@ -39,6 +39,18 @@ class GameMapGump : public Gump {
 protected:
 	ItemSorter *_displayList;
 
+	//! Item to use once the avatar has walked to it (walk_to_use), and the
+	//! pathfinder taking it there. Not saved: only the walk is.
+	ObjId _walkToUseItem;
+	ProcId _walkToUsePid;
+
+	//! Walk to an item out of reach to use it, false if not done
+	bool        walkToUse(Item *item);
+	//! Use the item once the walk is over, or forget it if the player
+	//! took over
+	void        checkWalkToUse();
+	void        cancelWalkToUse();
+
 public:
 	ENABLE_RUNTIME_CLASSTYPE()
 
@@ -47,6 +59,7 @@ public:
 	~GameMapGump() override;
 
 	void        PaintThis(RenderSurface *surf, int32 lerp_factor, bool scaled) override;
+	void        run() override;
 
 	Point3 GetCameraLocation(int lerp_factor = 256);
 
