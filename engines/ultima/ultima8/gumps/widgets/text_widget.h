@@ -39,6 +39,7 @@ class TextWidget : public Gump {
 protected:
 	Common::String     _text;
 	Common::String     _saveText; //!< written to savegames instead of _text if set (not saved)
+	int32           _saveWidth, _saveHeight; //!< target size saved with _saveText (0: this one)
 	bool            _gameFont;
 	int             _fontNum;
 	uint32          _blendColour;
@@ -105,8 +106,11 @@ public:
 	//! Save this text instead of the displayed one. Used for localized
 	//! text, so savegames keep the original game text. The saved widget
 	//! starts again at its first page.
-	void setSaveText(const Common::String &text) {
+	//! \param width, height the target size to save with it (0: this one)
+	void setSaveText(const Common::String &text, int32 width = 0, int32 height = 0) {
 		_saveText = text;
+		_saveWidth = width;
+		_saveHeight = height;
 	}
 
 protected:

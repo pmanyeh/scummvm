@@ -79,6 +79,27 @@ int BarkGump::dialogFontForActor(uint16 actor) {
 	}
 }
 
+// The text box of localized barks, in game pixels: bark_width wide (194, as
+// the original), bark_lines lines of the font high (4 with the high-res
+// text layer; 0: the original 55 pixels); at most 300 x 100
+static void localizedBarkSize(int fontnum, int32 &width, int32 &height) {
+	Ultima8Engine *engine = Ultima8Engine::get_instance();
+	width = ConfMan.hasKey("bark_width") ? ConfMan.getInt("bark_width") : 194;
+	width = CLIP<int32>(width, 60, 300);
+
+	int lines = ConfMan.hasKey("bark_lines") ? ConfMan.getInt("bark_lines")
+	            : (engine->isHDText() ? 4 : 0);
+	height = 55;
+	if (lines <= 0)
+		return;
+	Font *font = FontManager::get_instance()->getGameFont(fontnum, true, true);
+	// the last line needs only the font height
+	int32 h = (lines - 1) * font->getBaselineSkip() + font->getHeight();
+	if (font->isHighRes())
+		h = engine->hdToGameY(h);
+	height = MIN<int32>(h, 100);
+}
+
 void BarkGump::InitGump(Gump *newparent, bool take_focus) {
 	int fontnum = dialogFontForActor(_owner);
 
@@ -99,10 +120,14 @@ void BarkGump::InitGump(Gump *newparent, bool take_focus) {
 	}
 
 	// Create the TextWidget
-	TextWidget *widget = new TextWidget(0, 0, localized ? _displayText : _barked,
-	                                    true, fontnum, 194, 55);
+	int32 width = 194, height = 55;
 	if (localized)
-		widget->setSaveText(_barked);
+		localizedBarkSize(fontnum, width, height);
+	TextWidget *widget = new TextWidget(0, 0, localized ? _displayText : _barked,
+	                                    true, fontnum, width, height);
+	// savegames keep the original text and box
+	if (localized)
+		widget->setSaveText(_barked, 194, 55);
 	widget->InitGump(this);
 
 	_textWidget = widget->getObjId();

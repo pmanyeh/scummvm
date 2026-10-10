@@ -33,14 +33,14 @@ namespace Ultima8 {
 
 DEFINE_RUNTIME_CLASSTYPE_CODE(TextWidget)
 
-TextWidget::TextWidget() : Gump(), _gameFont(false), _fontNum(0), _blendColour(0),
+TextWidget::TextWidget() : Gump(), _saveWidth(0), _saveHeight(0), _gameFont(false), _fontNum(0), _blendColour(0),
 		_tx(0), _ty(0), _currentStart(0), _currentEnd(0), _targetWidth(0), _targetHeight(0),
 		_cachedText(nullptr), _textAlign(Font::TEXT_LEFT) {
 }
 
 TextWidget::TextWidget(int x, int y, const Common::String &txt, bool gamefont, int font,
 					   int w, int h, Font::TextAlign align, bool dopaging) :
-	Gump(x, y, w, h), _text(txt), _gameFont(gamefont), _fontNum(font),
+	Gump(x, y, w, h), _text(txt), _saveWidth(0), _saveHeight(0), _gameFont(gamefont), _fontNum(font),
 	_blendColour(0), _currentStart(0), _currentEnd(0), _tx(0), _ty(0),
 	_doPaging(dopaging), _targetWidth(w), _targetHeight(h),
 	_cachedText(nullptr), _textAlign(align) {
@@ -203,8 +203,8 @@ void TextWidget::saveData(Common::WriteStream *ws) {
 	const Common::String &text = saveOther ? _saveText : _text;
 	ws->writeUint32LE(saveOther ? 0 : static_cast<uint32>(_currentStart));
 	ws->writeUint32LE(saveOther ? 0 : static_cast<uint32>(_currentEnd));
-	ws->writeUint32LE(static_cast<uint32>(_targetWidth));
-	ws->writeUint32LE(static_cast<uint32>(_targetHeight));
+	ws->writeUint32LE(static_cast<uint32>(saveOther && _saveWidth ? _saveWidth : _targetWidth));
+	ws->writeUint32LE(static_cast<uint32>(saveOther && _saveHeight ? _saveHeight : _targetHeight));
 	ws->writeUint16LE(static_cast<uint16>(_textAlign));
 	ws->writeUint32LE(text.size());
 	ws->write(text.c_str(), text.size());
