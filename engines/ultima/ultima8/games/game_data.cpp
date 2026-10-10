@@ -454,8 +454,22 @@ bool GameData::setupCJKOverrides() {
 		}
 	}
 
-	if (ok && !replaced.empty())
+	if (ok && !replaced.empty()) {
+		// engravings in Chinese: dark grey on stone, dark brown on brass,
+		// without a border, like the shadows of the carved letters
+		static const struct { unsigned int _font; uint32 _colour; } engravings[] = {
+			{ FontManager::CJK_GRAVE_FONT, 0x404040 },
+			{ FontManager::CJK_PLAQUE_FONT, 0x6A4A1C }
+		};
+		for (const auto &e : engravings) {
+			fontmanager->addCJKOverride(e._font, filename, pointsize, e._colour, 0, antialiasing,
+			                            letterSpacing, latinSpacing, lineSpacing);
+			if (Ultima8Engine::get_instance()->isHDText())
+				setupHDCJKOverride(e._font, pointsize, e._colour, 0,
+				                   letterSpacing, latinSpacing, lineSpacing);
+		}
 		return true;
+	}
 
 	for (int fontnum : replaced)
 		fontmanager->removeOverride(fontnum);

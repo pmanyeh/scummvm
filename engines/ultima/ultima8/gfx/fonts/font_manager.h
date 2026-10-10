@@ -106,6 +106,10 @@ public:
 	//! A small CJK font of the high-res text layer, for the labels of the
 	//! status panel (stored as a high-res override of this font number)
 	static const unsigned int HD_SMALL_CJK_FONT = 64;
+	//! CJK fonts for engravings in Chinese (engraving_chinese): gravestones
+	//! (game font 11) and plaques (10), in the colours of their shadows
+	static const unsigned int CJK_GRAVE_FONT = 65;
+	static const unsigned int CJK_PLAQUE_FONT = 66;
 
 	//! get the high-res text layer's font for fontnum, or nullptr
 	Font *getHDFont(unsigned int fontnum) {

@@ -20,6 +20,8 @@
  */
 
 #include "ultima/ultima8/gumps/readable_gump.h"
+#include "common/config-manager.h"
+#include "ultima/ultima8/gfx/fonts/font_manager.h"
 #include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/gumps/widgets/text_widget.h"
 #include "ultima/ultima8/games/game_data.h"
@@ -75,14 +77,22 @@ void ReadableGump::InitGump(Gump *newparent, bool take_focus) {
 		}
 	}
 
-	if (!_subtitle.empty()) {
-		// Localized text: shown below the original, like the Japanese subtitles
+	// Localized text: shown below the original, like the Japanese subtitles,
+	// or engraved in place of it (engraving_chinese)
+	Common::String text = _text;
+	int fontNum = _fontNum;
+	int engravingFont = _fontNum == 10 ? FontManager::CJK_PLAQUE_FONT : FontManager::CJK_GRAVE_FONT;
+	if (!_subtitle.empty() && ConfMan.getBool("engraving_chinese") &&
+	        FontManager::get_instance()->getGameFont(engravingFont, true)) {
+		text = _subtitle;
+		fontNum = engravingFont;
+	} else if (!_subtitle.empty()) {
 		Gump *subwidget = new TextWidget(0, 0, _subtitle, true, jpsub_font, 0, 0, Font::TEXT_CENTER);
 		subwidget->InitGump(this);
 		subwidget->setRelativePosition(BOTTOM_CENTER, 0, -8);
 	}
 
-	Gump *widget = new TextWidget(0, 0, _text, true, _fontNum, _dims.width() - 16, 0, Font::TEXT_CENTER);
+	Gump *widget = new TextWidget(0, 0, text, true, fontNum, _dims.width() - 16, 0, Font::TEXT_CENTER);
 	widget->InitGump(this);
 	widget->setRelativePosition(CENTER);
 }
