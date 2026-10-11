@@ -39,6 +39,7 @@
 #include "ultima/ultima8/gfx/cycle_process.h"
 #include "ultima/ultima8/gfx/fonts/font_manager.h"
 #include "ultima/ultima8/gfx/render_surface.h"
+#include "ultima/ultima8/gumps/container_gump.h"
 #include "ultima/ultima8/gumps/game_map_gump.h"
 #include "ultima/ultima8/gumps/inverter_gump.h"
 #include "ultima/ultima8/gumps/menu_gump.h"
@@ -592,6 +593,8 @@ Common::Error Ultima8Engine::startupGame() {
 	ConfMan.registerDefault("cheat", false);
 	ConfMan.registerDefault("quick_bar", true);
 	ConfMan.registerDefault("walk_to_use", true);
+	ConfMan.registerDefault("esc_closes_gumps", true);
+	ConfMan.registerDefault("bark_click_anywhere", true);
 	ConfMan.registerDefault("engraving_chinese", true);
 
 	bool loaded = _game->loadFiles();
@@ -1258,9 +1261,16 @@ void Ultima8Engine::handleActionDown(KeybindingAction action) {
 			moveKeyEvent();
 		} else {
 			Gump *gump = getDesktopGump()->FindGump<ModalGump>();
+			// Escape closes the frontmost container (backpack, chest,
+			// paperdoll...) before it opens the menu (esc_closes_gumps)
+			Gump *container = nullptr;
+			if (!gump && GAME_IS_U8 && ConfMan.getBool("esc_closes_gumps"))
+				container = getDesktopGump()->FindFrontChild<ContainerGump>();
 			if (gump) {
 				// ensure any modal gump gets the message to close before we open the menu.
 				gump->Close();
+			} else if (container) {
+				container->Close();
 			} else {
 				MenuGump::showMenu();
 			}

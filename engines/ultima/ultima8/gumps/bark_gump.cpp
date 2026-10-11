@@ -238,6 +238,11 @@ Gump *BarkGump::onMouseDown(int button, int32 mx, int32 my) {
 	Gump *g = ItemRelativeGump::onMouseDown(button, mx, my);
 	if (g) return g;
 
+	skipPage();
+	return this;
+}
+
+void BarkGump::skipPage() {
 	// Scroll to next text, if possible
 	if (!NextText()) {
 		if (!_speechMute && _speechLength) {
@@ -246,7 +251,6 @@ Gump *BarkGump::onMouseDown(int button, int32 mx, int32 my) {
 		}
 		Close();
 	}
-	return this;
 }
 
 void BarkGump::saveData(Common::WriteStream *ws) {

@@ -208,6 +208,18 @@ bool Gump::GetMouseCursor(int32 mx, int32 my, Shape &shape, int32 &frame) {
 	return ret;
 }
 
+Gump *Gump::FindFrontChild(FindGumpPredicate predicate) {
+	// Children are kept back to front
+	for (auto it = _children.reverse_begin(); it != _children.end(); --it) {
+		Gump *g = *it;
+		if (g->_flags & FLAG_CLOSING || g->IsHidden())
+			continue;
+		if (predicate(g))
+			return g;
+	}
+	return nullptr;
+}
+
 void Gump::Paint(RenderSurface *surf, int32 lerp_factor, bool scaled) {
 	// Don't paint if hidden
 	if (IsHidden()) return;

@@ -122,6 +122,12 @@ public:
 		return FindGump(&IsOfType<T>, recursive);
 	}
 
+	//! The frontmost child (not closing or hidden) matching the predicate
+	Gump               *FindFrontChild(FindGumpPredicate predicate);
+	template<class T> Gump     *FindFrontChild() {
+		return FindFrontChild(&IsOfType<T>);
+	}
+
 	//! A predicate to find a ui element by its index
 	template<int T> static bool FindByIndex(const Gump *g) { return g->GetIndex() == T; }
 

@@ -21,6 +21,7 @@
 
 #include "common/config-manager.h"
 #include "ultima/ultima.h"
+#include "ultima/ultima8/gumps/bark_gump.h"
 #include "ultima/ultima8/gumps/game_map_gump.h"
 #include "ultima/ultima8/gumps/gump_notify_process.h"
 #include "ultima/ultima8/gumps/slider_gump.h"
@@ -271,7 +272,20 @@ Gump *GameMapGump::onMouseDown(int button, int32 mx, int32 my) {
 	ParentToGump(sx, sy);
 	GumpToScreenSpace(sx, sy);
 
-	AvatarMoverProcess *amp = Ultima8Engine::get_instance()->getAvatarMoverProcess();
+	Ultima8Engine *engine = Ultima8Engine::get_instance();
+	// In a conversation (the Avatar is in stasis) a click anywhere goes to
+	// the next page of the frontmost speech, as in Ultima VII
+	// (bark_click_anywhere)
+	if (button == Mouse::BUTTON_LEFT && GAME_IS_U8 && engine->isAvatarInStasis() &&
+	        ConfMan.getBool("bark_click_anywhere")) {
+		BarkGump *bark = dynamic_cast<BarkGump *>(engine->getDesktopGump()->FindFrontChild<BarkGump>());
+		if (bark) {
+			bark->skipPage();
+			return this;
+		}
+	}
+
+	AvatarMoverProcess *amp = engine->getAvatarMoverProcess();
 	if (button == Mouse::BUTTON_RIGHT || button == Mouse::BUTTON_LEFT) {
 		amp->onMouseDown(button, sx, sy);
 	}

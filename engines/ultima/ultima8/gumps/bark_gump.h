@@ -58,6 +58,9 @@ public:
 	// Got to the next page on mouse click
 	Gump       *onMouseDown(int button, int32 mx, int32 my) override;
 
+	//! Go to the next page, or close (and stop the speech) after the last
+	void        skipPage();
+
 	// Init the gump, call after construction
 	void        InitGump(Gump *newparent, bool take_focus = true) override;
 
