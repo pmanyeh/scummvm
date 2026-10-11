@@ -75,8 +75,10 @@ public:
 	void setTarget(const Point3 &pt);
 	void setTarget(Item *item, bool hit = false);
 	//! Target: anywhere the gap between the footpads of the actor and the
-	//! item is at most range. (setTarget(item) compares the far corner of
-	//! the actor, so it cannot be met next to some sides of an item.)
+	//! item is at most range and the actor can reach the item (line of
+	//! sight, so not from another floor). (setTarget(item) compares the far
+	//! corner of the actor, so it cannot be met next to some sides of an
+	//! item.)
 	void setReachTarget(Item *item, int range);
 
 	//! try to reach the target by pathfinding

@@ -197,14 +197,9 @@ bool Pathfinder::checkTarget(const PathNode *node) const {
 	// TODO: these ranges are probably a bit too high,
 	// but otherwise it won't work properly yet -wjp
 	if (_targetItem && _reachRange) {
-		Point3 pt = _targetItem->getLocationAbsolute();
-		int32 itemXd, itemYd, itemZd;
-		_targetItem->getFootpadWorld(itemXd, itemYd, itemZd);
-		const Point3 &a = node->state._point;
-		// gaps between the footpads (0 if they overlap)
-		int32 gapX = MAX<int32>(MAX<int32>(pt.x - itemXd - a.x, a.x - _actorXd - pt.x), 0);
-		int32 gapY = MAX<int32>(MAX<int32>(pt.y - itemYd - a.y, a.y - _actorYd - pt.y), 0);
-		return gapX <= _reachRange && gapY <= _reachRange;
+		// the gaps between the footpads are at most range, and the item is
+		// in sight (not on another floor): the test of using the item
+		return _actor->canReachFrom(node->state._point, _targetItem, _reachRange);
 	}
 	if (_targetItem) {
 		if (_hitMode) {

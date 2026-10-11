@@ -325,6 +325,11 @@ public:
 	//! \param z z coordinate of other to use.
 	bool canReach(const Item *other, int range, int32 x = 0, int32 y = 0, int32 z = 0) const;
 
+	//! canReach() with this item at another location (e.g. a pathfinder
+	//! node); this item itself is ignored in the line of sight
+	bool canReachFrom(const Point3 &from, const Item *other, int range,
+	                  int32 x = 0, int32 y = 0, int32 z = 0) const;
+
 	//! Move the object to (x,y,z) colliding with objects in the way.
 	//! \param teleport move without colliding with objects between source and
 	//!        destination

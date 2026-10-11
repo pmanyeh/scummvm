@@ -2439,6 +2439,11 @@ static bool checkLineOfSightCollisions(
 
 bool Item::canReach(const Item *other, int range,
 					int32 otherX, int32 otherY, int32 otherZ) const {
+	return canReachFrom(getLocationAbsolute(), other, range, otherX, otherY, otherZ);
+}
+
+bool Item::canReachFrom(const Point3 &from, const Item *other, int range,
+						int32 otherX, int32 otherY, int32 otherZ) const {
 	// get location and dimensions of self and other (or their root containers)
 	int32 thisXd, thisYd, thisZd;
 	int32 otherXd, otherYd, otherZd;
@@ -2447,7 +2452,7 @@ bool Item::canReach(const Item *other, int range,
 
 	bool usingAlternatePos = (otherX != 0);
 
-	Point3 pt1 = getLocationAbsolute();
+	Point3 pt1 = from;
 	other = other->getTopItem();
 	if (otherX == 0) {
 		Point3 pt2 = other->getLocationAbsolute();

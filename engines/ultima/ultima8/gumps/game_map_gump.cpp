@@ -390,8 +390,13 @@ bool GameMapGump::walkToUse(Item *item) {
 	Kernel *kernel = Kernel::get_instance();
 	cancelWalkToUse();
 	kernel->killProcesses(avatar->getObjId(), PathfinderProcess::PATHFINDER_PROC_TYPE, true);
-	// next to the item: its footpad at most 16 from the Avatar's
-	_walkToUsePid = kernel->addProcess(new PathfinderProcess(avatar, item->getObjId(), false, 16));
+	Point3 a = avatar->getLocation();
+	Point3 i = item->getLocationAbsolute();
+	debug(1, "Walk to use: avatar (%d, %d, %d), item %u shape %u at (%d, %d, %d)",
+	      a.x, a.y, a.z, item->getObjId(), item->getShape(), i.x, i.y, i.z);
+	// to where the item can be used, as in onMouseDouble (a big table can
+	// keep the Avatar farther than a few units from an item on it)
+	_walkToUsePid = kernel->addProcess(new PathfinderProcess(avatar, item->getObjId(), false, 128));
 	_walkToUseItem = item->getObjId();
 	return true;
 }
@@ -428,7 +433,11 @@ void GameMapGump::checkWalkToUse() {
 
 	_walkToUseItem = 0;
 	_walkToUsePid = 0;
-	if (avatar->canReach(item, 128)) // the range of onMouseDouble
+	bool reach = avatar->canReach(item, 128); // the range of onMouseDouble
+	Point3 a = avatar->getLocation();
+	debug(1, "Walk to use: avatar stopped at (%d, %d, %d), %s",
+	      a.x, a.y, a.z, reach ? "item used" : "out of reach");
+	if (reach)
 		item->use();
 	else
 		avatar->doAnim(Animation::shakeHead, avatar->getDir());

@@ -66,6 +66,8 @@ PathfinderProcess::PathfinderProcess(Actor *actor, ObjId itemid, bool hit, int r
 		pf.setTarget(item, hit);
 
 	bool ok = pf.pathfind(_path);
+	if (_reachRange)
+		debug(1, "Walk to use: %s (%u actions)", ok ? "path found" : "no path", _path.size());
 
 	if (!ok) {
 		// can't get there...
