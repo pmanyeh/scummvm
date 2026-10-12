@@ -45,6 +45,7 @@
 #ifdef ENABLE_ULTIMA8
 #include "ultima/ultima8/ultima8.h"
 #include "ultima/ultima8/metaengine.h"
+#include "ultima/ultima8/misc/options_widget.h"
 #endif
 
 #include "ultima/metaengine.h"
@@ -307,6 +308,14 @@ SaveStateList UltimaMetaEngine::listSaves(const char *target) const {
 #endif
 
 	return saveList;
+}
+
+GUI::OptionsContainerWidget *UltimaMetaEngine::buildEngineOptionsWidget(GUI::GuiObject *boss, const Common::String &name, const Common::String &target) const {
+#ifdef ENABLE_ULTIMA8
+	if (getGameId(target) == "ultima8")
+		return new Ultima::Ultima8::OptionsWidget(boss, name, target, getExtraGuiOptions(target));
+#endif
+	return AdvancedMetaEngine::buildEngineOptionsWidget(boss, name, target);
 }
 
 SaveStateDescriptor UltimaMetaEngine::querySaveMetaInfos(const char *target, int slot) const {

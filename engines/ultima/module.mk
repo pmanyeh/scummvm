@@ -545,6 +545,7 @@ MODULE_OBJS += \
 	ultima8/misc/encoding.o \
 	ultima8/misc/id_man.o \
 	ultima8/misc/localization.o \
+	ultima8/misc/options_widget.o \
 	ultima8/misc/translation_catalog.o \
 	ultima8/misc/util.o \
 	ultima8/usecode/bit_set.o \
