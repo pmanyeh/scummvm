@@ -1807,16 +1807,16 @@ msgstr "用第一個有效的裝置"
 
 #: gui/options.cpp:1838
 msgid "SoundFont:"
-msgstr "聲音字型："
+msgstr "SoundFont："
 
 #: gui/options.cpp:1838 gui/options.cpp:1840 gui/options.cpp:1848
 msgid "SoundFont is supported by some audio cards, FluidSynth and Timidity"
-msgstr "一些音效卡、FluidSync 和 Timbity 支援聲音字型"
+msgstr "一些音效卡、FluidSync 和 Timbity 支援SoundFont"
 
 #: gui/options.cpp:1840
 msgctxt "lowres"
 msgid "SoundFont:"
-msgstr "聲音字型："
+msgstr "SoundFont："
 
 #: gui/options.cpp:1846
 msgctxt "soundfont"
@@ -7883,7 +7883,7 @@ msgstr ""
 
 #: engines/glk/dialogs.cpp:210
 msgid "Font"
-msgstr "聲音字型："
+msgstr "SoundFont："
 
 #: engines/glk/dialogs.cpp:212 engines/glk/dialogs.cpp:222
 msgid "Text:"
