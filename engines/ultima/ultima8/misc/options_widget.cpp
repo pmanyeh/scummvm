@@ -134,6 +134,9 @@ OptionsWidget::OptionsWidget(GuiObject *boss, const Common::String &name, const 
 	addBool("EscCloses", _("Escape closes the frontmost window first"),
 	        _("Escape closes the frontmost container or inventory before it opens the menu."),
 	        "esc_closes_gumps", true);
+	addBool("AssistedJump", _("Land targeted jumps on the middle of the target"),
+	        _("With jump to mouse position, the Avatar lands with his whole footing on the stone or platform under the mouse, and shakes his head if there is no room. Off: the original landing."),
+	        "assisted_jump", true);
 	addBool("AutoHide", _("Show the quick action icons only under the mouse"),
 	        _("Off: the quick action icons are always shown."),
 	        "quick_bar_autohide", true);

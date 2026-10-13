@@ -30,6 +30,8 @@
 #include "ultima/ultima8/world/actors/avatar_gravity_process.h"
 #include "ultima/ultima8/audio/music_process.h"
 #include "ultima/ultima8/world/get_object.h"
+#include "ultima/ultima8/world/current_map.h"
+#include "ultima/ultima8/world/world.h"
 #include "ultima/ultima8/misc/direction_util.h"
 
 namespace Ultima {
@@ -763,6 +765,69 @@ void U8AvatarMoverProcess::jump(Animation::Sequence action, Direction direction)
 		int32 xrange = abs(a.x - coords.x);
 		int32 yrange = abs(a.y - coords.y);
 		int maxrange = avatar->getStr() * 32;
+
+		// Land with the Avatar's footpad centred on the point and, on a small
+		// target like a stepping stone, all of it on the target: the target
+		// point is the footpad's far corner, so aiming the point itself put
+		// half the Avatar over the edge (assisted_jump)
+		if (target && target->getShapeInfo()->is_land() && ConfMan.getBool("assisted_jump")) {
+			int32 axd, ayd, azd, ixd, iyd, izd;
+			avatar->getFootpadWorld(axd, ayd, azd);
+			target->getFootpadWorld(ixd, iyd, izd);
+			Point3 t = target->getLocationAbsolute();
+			auto centred = [](int32 click, int32 itemMax, int32 itemSize, int32 actorSize) {
+				if (itemSize <= actorSize)
+					return itemMax - itemSize / 2;
+				return CLIP<int32>(click, itemMax - itemSize + actorSize / 2, itemMax - actorSize / 2);
+			};
+			coords.x = centred(coords.x, t.x, ixd, axd) + axd / 2;
+			coords.y = centred(coords.y, t.y, iyd, ayd) + ayd / 2;
+			coords.z = t.z + izd;
+			xrange = abs(a.x - (coords.x - axd / 2));
+			yrange = abs(a.y - (coords.y - ayd / 2));
+
+			// room for the Avatar there, standing on something; when something
+			// stands there (a rock, a plant), the nearest free spot, back
+			// towards the Avatar or to the sides
+			CurrentMap *map = World::get_instance()->getCurrentMap();
+			PositionInfo info = map->getPositionInfo(coords.x, coords.y, coords.z,
+			                                         avatar->getShape(), avatar->getObjId());
+			if (!info.valid || !info.supported) {
+				Point3 av0 = avatar->getLocation();
+				int32 dx = av0.x - coords.x, dy = av0.y - coords.y;
+				int32 len = MAX<int32>(MAX<int32>(ABS(dx), ABS(dy)), 1);
+				bool found = false;
+				for (int back = 0; back <= 96 && !found; back += 8) {
+					for (int side = 0; side <= 32 && !found; side += 8) {
+						for (int sign = 1; sign >= -1 && !found; sign -= 2) {
+							if (side == 0 && sign < 0)
+								continue;
+							// back along the jump, side across it
+							int32 x = coords.x + dx * back / len - dy * side * sign / len;
+							int32 y = coords.y + dy * back / len + dx * side * sign / len;
+							PositionInfo i2 = map->getPositionInfo(x, y, coords.z,
+							                                       avatar->getShape(), avatar->getObjId());
+							if (i2.valid && i2.supported) {
+								coords.x = x;
+								coords.y = y;
+								info = i2;
+								found = true;
+							}
+						}
+					}
+				}
+				xrange = abs(a.x - (coords.x - axd / 2));
+				yrange = abs(a.y - (coords.y - ayd / 2));
+			}
+			Point3 av = avatar->getLocation();
+			debug(1, "Assisted jump: avatar (%d, %d, %d), target %u shape %u at (%d, %d, %d) size (%d, %d, %d), "
+			      "landing (%d, %d, %d), range %d/%d of %d, valid %d supported %d blocker %u",
+			      av.x, av.y, av.z, target->getObjId(), target->getShape(), t.x, t.y, t.z, ixd, iyd, izd,
+			      coords.x, coords.y, coords.z, xrange, yrange, maxrange, info.valid, info.supported,
+			      info.blocker ? info.blocker->getShape() : 0);
+			if (!info.valid || !info.supported)
+				target = nullptr;
+		}
 
 		if (target && target->getShapeInfo()->is_land() &&
 		        xrange < maxrange && yrange < maxrange) {

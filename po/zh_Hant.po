@@ -15139,3 +15139,11 @@ msgstr "把上面的字型與數值設定恢復成預設值（不含最上方的
 #: engines/ultima
 msgid "Default (%S)"
 msgstr "預設（%S）"
+
+#: engines/ultima
+msgid "Land targeted jumps on the middle of the target"
+msgstr "跳向滑鼠位置時，落在目標中央"
+
+#: engines/ultima
+msgid "With jump to mouse position, the Avatar lands with his whole footing on the stone or platform under the mouse, and shakes his head if there is no room. Off: the original landing."
+msgstr "開啟「跳向滑鼠位置」時，聖者會整個人落在滑鼠所指的石頭或平台上；放不下就搖頭。關閉：原版的落點。"
