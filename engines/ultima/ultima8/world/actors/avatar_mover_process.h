@@ -136,6 +136,11 @@ protected:
 	MButton _mouseButton[2];
 
 	uint32 _movementFlags;
+
+	//! Runs in the current tick (not saved): an animation that ends at
+	//! once wakes us again in the same tick
+	uint32 _runTick;
+	uint _runsThisTick;
 };
 
 } // End of namespace Ultima8

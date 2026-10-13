@@ -32,7 +32,7 @@ namespace Ultima {
 namespace Ultima8 {
 
 AvatarMoverProcess::AvatarMoverProcess() : Process(),
-		_lastAttack(0), _idleTime(0), _movementFlags(0) {
+		_lastAttack(0), _idleTime(0), _movementFlags(0), _runTick(0), _runsThisTick(0) {
 	_type = 1; // CONSTANT! (type 1 = persistent)
 }
 
@@ -43,6 +43,20 @@ AvatarMoverProcess::~AvatarMoverProcess() {
 void AvatarMoverProcess::run() {
 	Actor *avatar = getControlledActor();
 	assert(avatar);
+
+	// An animation that cannot even start (running into a corpse, say)
+	// ends at once and wakes us in the same tick, and we start it again:
+	// the kernel killed the process as stuck in a loop. Go on next tick.
+	uint32 tick = Kernel::get_instance()->getTickNum();
+	if (tick != _runTick) {
+		_runTick = tick;
+		_runsThisTick = 0;
+	}
+	if (++_runsThisTick > 8) {
+		if (_runsThisTick == 9)
+			debug(1, "AvatarMoverProcess: animations end at once, waiting for the next tick");
+		return;
+	}
 
 	// busy, so don't move
 	if (avatar->isBusy()) {
