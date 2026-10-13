@@ -96,6 +96,12 @@ public:
 		TS_ASSERT(!TranslationCatalog::canonicalContext("bark 0402:", c));
 		TS_ASSERT(!TranslationCatalog::canonicalContext("bark 0402:12345", c));
 		TS_ASSERT(!TranslationCatalog::canonicalContext("ask 04G2", c));
+		// one frame of the barking item
+		TS_ASSERT(TranslationCatalog::canonicalContext("bark 2fe:9a#05", c));
+		TS_ASSERT_EQUALS(c, "bark 02FE:009A#5");
+		TS_ASSERT(!TranslationCatalog::canonicalContext("bark 02FE:009A#", c));
+		TS_ASSERT(!TranslationCatalog::canonicalContext("bark 02FE:009A#x", c));
+		TS_ASSERT(!TranslationCatalog::canonicalContext("book 02FE:009A#1", c));
 		TS_ASSERT(TranslationCatalog::canonicalContext("param 40a:varf7", c));
 		TS_ASSERT_EQUALS(c, "param 040A:varF7");
 		TS_ASSERT(TranslationCatalog::canonicalContext("param 040A:call_bcf", c));

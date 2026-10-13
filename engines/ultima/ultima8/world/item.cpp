@@ -3080,7 +3080,7 @@ uint32 Item::I_bark(const uint8 *args, unsigned int /*argsize*/) {
 	Common::String displayText;
 	Localization *l10n = Localization::get_instance();
 	if (l10n && l10n->isActive())
-		displayText = l10n->translateBark(str);
+		displayText = l10n->translateBark(str, item);
 
 	return item->bark(str, displayText);
 }

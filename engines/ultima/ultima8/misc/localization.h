@@ -31,6 +31,7 @@
 namespace Ultima {
 namespace Ultima8 {
 
+class Item;
 class Process;
 
 /**
@@ -85,8 +86,10 @@ public:
 	 */
 	Common::String translate(const Common::String &context, const Common::String &source) const;
 
-	//! Display text for a bark; must be called from the bark intrinsic
-	Common::String translateBark(const Common::String &source) const;
+	//! Display text for a bark; must be called from the bark intrinsic.
+	//! An entry for the speaker's frame ("bark CCCC:IIII#frame") comes
+	//! first: one item shape with several kinds, like the potions.
+	Common::String translateBark(const Common::String &source, const Item *speaker = nullptr) const;
 
 	/**
 	 * Display text of a book, scroll, gravestone or plaque; must be called

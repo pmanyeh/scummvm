@@ -127,12 +127,26 @@ bool TranslationCatalog::canonicalContext(const Common::String &context, Common:
 		if (!context.hasPrefix(prefix.c_str()))
 			continue;
 		Common::String id = context.substr(prefix.size());
+		// "#frame": an entry for one frame of the item (barks only)
+		Common::String frame;
+		size_t hash = id.findFirstOf('#');
+		if (hash != Common::String::npos) {
+			frame = id.substr(hash + 1);
+			id = id.substr(0, hash);
+			if (strcmp(kind, "bark") || frame.empty() || frame.size() > 3)
+				return false;
+			for (uint i = 0; i < frame.size(); i++) {
+				if (!Common::isDigit(frame[i]))
+					return false;
+			}
+			frame = Common::String::format("#%d", atoi(frame.c_str()));
+		}
 		size_t colon = id.findFirstOf(':');
 		if (colon == Common::String::npos ||
 		        !parseHex(id.substr(0, colon), classId) ||
 		        !parseHex(id.substr(colon + 1), ip))
 			return false;
-		canonical = callSiteContext(kind, classId, ip);
+		canonical = callSiteContext(kind, classId, ip) + frame;
 		return true;
 	}
 	if (context.hasPrefix("ask ")) {

@@ -26,6 +26,7 @@
 
 #include "ultima/ultima.h"
 #include "ultima/ultima8/misc/localization.h"
+#include "ultima/ultima8/world/item.h"
 #include "ultima/ultima8/games/game_data.h"
 #include "ultima/ultima8/gfx/fonts/font.h"
 #include "ultima/ultima8/gfx/fonts/font_manager.h"
@@ -183,7 +184,7 @@ Common::String Localization::translate(const Common::String &context,
 	}
 }
 
-Common::String Localization::translateBark(const Common::String &source) const {
+Common::String Localization::translateBark(const Common::String &source, const Item *speaker) const {
 	// Inside an intrinsic the IP of the running process still points at
 	// the call instruction, which identifies the bark.
 	UCProcess *proc = dynamic_cast<UCProcess *>(Kernel::get_instance()->getRunningProcess());
@@ -191,8 +192,13 @@ Common::String Localization::translateBark(const Common::String &source) const {
 		debugC(1, kDebugLocalization, "[U8-L10N] bark without usecode process src=\"%s\"", source.c_str());
 		return source;
 	}
-	Common::String translation = translate(
-		TranslationCatalog::barkContext(proc->getClassId(), proc->getIp()), source);
+	Common::String context = TranslationCatalog::barkContext(proc->getClassId(), proc->getIp());
+	Common::String translation = source;
+	Common::String frameContext = speaker ? context + Common::String::format("#%u", speaker->getFrame()) : "";
+	if (speaker && isActive() && _catalog.lookup(frameContext, source, translation) == TranslationCatalog::kHit)
+		debugC(1, kDebugLocalization, "[U8-L10N] %s HIT src=\"%s\"", frameContext.c_str(), source.c_str());
+	else
+		translation = translate(context, source);
 	if (translation != source)
 		translation = annotate(translation, proc);
 	return translation;
