@@ -596,6 +596,7 @@ Common::Error Ultima8Engine::startupGame() {
 	ConfMan.registerDefault("esc_closes_gumps", true);
 	ConfMan.registerDefault("bark_click_anywhere", true);
 	ConfMan.registerDefault("assisted_jump", true);
+	ConfMan.registerDefault("damage_numbers", true);
 	ConfMan.registerDefault("engraving_chinese", true);
 
 	bool loaded = _game->loadFiles();

@@ -52,6 +52,7 @@
 #include "ultima/ultima8/world/current_map.h"
 #include "ultima/ultima8/world/coord_utils.h"
 #include "ultima/ultima8/world/sprite_process.h"
+#include "ultima/ultima8/gumps/damage_gump.h"
 #include "ultima/ultima8/world/target_reticle_process.h"
 #include "ultima/ultima8/world/item_selection_process.h"
 #include "ultima/ultima8/world/actors/main_actor.h"
@@ -1189,6 +1190,10 @@ void Actor::receiveHitU8(uint16 other, Direction dir, int damage, uint16 damage_
 	} else {
 		debugC(kDebugActor, "Damage: %d", damage);
 	}
+
+	// what the Avatar's blow did, over the one he hit (damage_numbers)
+	if (other == kMainActorId && _objId != kMainActorId)
+		DamageGump::show(_objId, damage);
 
 	Common::RandomSource &rs = Ultima8Engine::get_instance()->getRandomSource();
 	if (damage >= 4 && _objId == kMainActorId && hitter) {

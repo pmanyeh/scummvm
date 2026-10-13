@@ -115,6 +115,8 @@ public:
 	static const unsigned int CJK_BOOK_FONT = 67;
 	static const unsigned int CJK_SCROLL_FONT = 68;
 	static const unsigned int CJK_INTRO_FONT = 69;
+	//! CJK font of the damage numbers (damage_numbers, font_cjk_damage_*)
+	static const unsigned int CJK_DAMAGE_FONT = 70;
 
 	//! cjkFont if it is set up (localized), else gameFont
 	unsigned int localizedFont(unsigned int gameFont, unsigned int cjkFont) const {

@@ -15147,3 +15147,11 @@ msgstr "跳向滑鼠位置時，落在目標中央"
 #: engines/ultima
 msgid "With jump to mouse position, the Avatar lands with his whole footing on the stone or platform under the mouse, and shakes his head if there is no room. Off: the original landing."
 msgstr "開啟「跳向滑鼠位置」時，聖者會整個人落在滑鼠所指的石頭或平台上；放不下就搖頭。關閉：原版的落點。"
+
+#: engines/ultima
+msgid "Show the damage of the Avatar's blows"
+msgstr "顯示聖者攻擊的傷害數字"
+
+#: engines/ultima
+msgid "The damage the Avatar does floats up from the one he hit, or Blocked when the armour took it all."
+msgstr "聖者打中敵人時，敵人頭上會浮出傷害數字；被盔甲完全擋下時顯示「格擋」。"

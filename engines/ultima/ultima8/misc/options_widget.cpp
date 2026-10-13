@@ -137,6 +137,9 @@ OptionsWidget::OptionsWidget(GuiObject *boss, const Common::String &name, const 
 	addBool("AssistedJump", _("Land targeted jumps on the middle of the target"),
 	        _("With jump to mouse position, the Avatar lands with his whole footing on the stone or platform under the mouse, and shakes his head if there is no room. Off: the original landing."),
 	        "assisted_jump", true);
+	addBool("DamageNumbers", _("Show the damage of the Avatar's blows"),
+	        _("The damage the Avatar does floats up from the one he hit, or Blocked when the armour took it all."),
+	        "damage_numbers", true);
 	addBool("AutoHide", _("Show the quick action icons only under the mouse"),
 	        _("Off: the quick action icons are always shown."),
 	        "quick_bar_autohide", true);
