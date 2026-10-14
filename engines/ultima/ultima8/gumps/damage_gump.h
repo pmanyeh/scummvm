@@ -45,6 +45,10 @@ public:
 	void run() override;
 	void Paint(RenderSurface *surf, int32 lerp_factor, bool scaled) override;
 
+	//! No notifier: a hit kills the processes of the actor (to stop what he
+	//! does), which would close us at once; we close when he is gone
+	void CreateNotifier() override {}
+
 	//! Show the damage over an actor, if the option is on
 	static void show(uint16 actor, int damage);
 	//! Show that the Avatar's blow hit nothing, if the option is on

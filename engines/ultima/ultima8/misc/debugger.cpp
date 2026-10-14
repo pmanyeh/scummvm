@@ -33,7 +33,9 @@
 #include "ultima/ultima8/gfx/main_shape_archive.h"
 #include "ultima/ultima8/gfx/render_surface.h"
 #include "ultima/ultima8/gfx/texture.h"
+#include "ultima/ultima8/gumps/damage_gump.h"
 #include "ultima/ultima8/gumps/fast_area_vis_gump.h"
+#include "ultima/ultima8/gumps/health_bar_gump.h"
 #include "ultima/ultima8/gumps/game_map_gump.h"
 #include "ultima/ultima8/gumps/menu_gump.h"
 #include "ultima/ultima8/gumps/minimap_gump.h"
@@ -87,6 +89,7 @@ Debugger::Debugger() : GUI::Debugger() {
 	registerCmd("Localization::bark", WRAP_METHOD(Debugger, cmdLocalizationBark));
 	registerCmd("Localization::say", WRAP_METHOD(Debugger, cmdLocalizationSay));
 	registerCmd("Localization::gravestone", WRAP_METHOD(Debugger, cmdLocalizationGravestone));
+	registerCmd("Localization::damage", WRAP_METHOD(Debugger, cmdLocalizationDamage));
 	registerCmd("Localization::guardianBark", WRAP_METHOD(Debugger, cmdLocalizationGuardianBark));
 	registerCmd("Localization::read", WRAP_METHOD(Debugger, cmdLocalizationRead));
 
@@ -441,6 +444,24 @@ bool Debugger::cmdLocalizationGravestone(int argc, const char **argv) {
 	}
 	// Only the gravestone of the death screen, the avatar does not die
 	AvatarDeathProcess::showGravestone();
+	return false;
+}
+
+bool Debugger::cmdLocalizationDamage(int argc, const char **argv) {
+	if (argc < 2 || argc > 3) {
+		debugPrintf("Usage: %s <objid> [damage]\n", argv[0]);
+		debugPrintf("Shows a damage number (0: Blocked, -1: Miss) and the health bar over\n");
+		debugPrintf("an actor, as a hit would (1 = the Avatar); the actor takes no damage.\n");
+		return true;
+	}
+	uint16 id = static_cast<uint16>(strtol(argv[1], nullptr, 0));
+	int damage = argc == 3 ? static_cast<int>(strtol(argv[2], nullptr, 0)) : 5;
+	debugPrintf("On the map: %s\n", DamageGump::isOnMap(id) ? "yes" : "no");
+	if (damage < 0)
+		DamageGump::showMiss(id);
+	else
+		DamageGump::show(id, damage);
+	HealthBarGump::show(id);
 	return false;
 }
 

@@ -54,7 +54,7 @@ DamageGump::~DamageGump() {
 
 void DamageGump::run() {
 	ItemRelativeGump::run();
-	if (++_age >= DAMAGE_FRAMES)
+	if (++_age >= DAMAGE_FRAMES || !getItem(_owner))
 		Close();
 }
 
@@ -68,8 +68,11 @@ void DamageGump::Paint(RenderSurface *surf, int32 lerp_factor, bool scaled) {
 bool DamageGump::isOnMap(uint16 actor) {
 	const Item *item = getItem(actor);
 	GameMapGump *map = Ultima8Engine::get_instance()->getGameMapGump();
-	if (!item || !map || !item->hasFlags(Item::FLG_FASTAREA) || item->getParentAsContainer())
+	if (!item || !map || !item->hasFlags(Item::FLG_FASTAREA) || item->getParentAsContainer()) {
+		debug(1, "Damage: %u not on the map (item %d, map %d, fast %d)", actor, item != nullptr,
+		      map != nullptr, item && item->hasFlags(Item::FLG_FASTAREA));
 		return false;
+	}
 	int32 gx, gy;
 	return map->GetLocationOfItem(actor, gx, gy);
 }
@@ -87,6 +90,7 @@ void DamageGump::show(uint16 actor, int damage) {
 	unsigned int font = actor == kMainActorId ? FontManager::CJK_DAMAGE_AVATAR_FONT : FontManager::CJK_DAMAGE_FONT;
 	Gump *gump = new DamageGump(actor, text, font);
 	gump->InitGump(nullptr, false);
+	debug(1, "Damage: %d over %u (gump %u)", damage, actor, gump->getObjId());
 }
 
 void DamageGump::showMiss(uint16 actor) {

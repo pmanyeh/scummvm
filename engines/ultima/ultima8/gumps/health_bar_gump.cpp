@@ -25,6 +25,7 @@
 #include "ultima/ultima8/gumps/damage_gump.h"
 #include "ultima/ultima8/gfx/render_surface.h"
 #include "ultima/ultima8/gfx/texture.h"
+#include "ultima/ultima8/gfx/shape_info.h"
 #include "ultima/ultima8/world/actors/actor.h"
 #include "ultima/ultima8/world/get_object.h"
 #include "ultima/ultima8/ultima8.h"
@@ -41,12 +42,29 @@ static const int HEALTH_BAR_HEIGHT = 4;
 
 // the bar shown over each actor
 static Common::HashMap<uint16, ObjId> g_healthBars;
+// the full hit points of monsters, as they had them when first hit
+static Common::HashMap<uint16, uint16> g_fullHP;
 
-HealthBarGump::HealthBarGump() : ItemRelativeGump(), _age(0) {
+// The full hit points of an actor, called before a hit takes his. Monsters
+// get random hit points (MonsterInfo), and 2 * strength (getMaxHP) is not
+// theirs: take what they had when first hit.
+static int fullHP(const Actor *actor) {
+	int hp = actor->getHP();
+	const ShapeInfo *si = actor->getShapeInfo();
+	if (si && si->_monsterInfo) {
+		uint16 id = actor->getObjId();
+		int full = MAX<int>(hp, g_fullHP.getValOrDefault(id, 0));
+		g_fullHP[id] = full;
+		return full;
+	}
+	return MAX<int>(hp, actor->getMaxHP());
+}
+
+HealthBarGump::HealthBarGump() : ItemRelativeGump(), _age(0), _fullHP(0) {
 }
 
 HealthBarGump::HealthBarGump(uint16 owner) :
-		ItemRelativeGump(0, 0, HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT, owner, FLAG_DONT_SAVE, LAYER_NORMAL), _age(0) {
+		ItemRelativeGump(0, 0, HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT, owner, FLAG_DONT_SAVE, LAYER_NORMAL), _age(0), _fullHP(0) {
 }
 
 HealthBarGump::~HealthBarGump() {
@@ -57,6 +75,9 @@ HealthBarGump::~HealthBarGump() {
 void HealthBarGump::run() {
 	ItemRelativeGump::run();
 	const Actor *actor = getActor(_owner);
+	// the object number may be used again for another one
+	if (!actor || actor->isDead())
+		g_fullHP.erase(_owner);
 	if (++_age >= HEALTH_BAR_FRAMES || !actor || actor->isDead() || !DamageGump::isOnMap(_owner))
 		Close();
 }
@@ -72,7 +93,7 @@ void HealthBarGump::PaintThis(RenderSurface *surf, int32 lerp_factor, bool scale
 	const Actor *actor = getActor(_owner);
 	if (!actor)
 		return;
-	int maxHP = actor->getMaxHP();
+	int maxHP = _fullHP;
 	int hp = MIN<int>(actor->getHP(), maxHP);
 	if (maxHP <= 0)
 		return;
@@ -93,18 +114,23 @@ void HealthBarGump::show(uint16 actor) {
 	        !DamageGump::isOnMap(actor))
 		return;
 
+	int full = fullHP(getActor(actor));
+
 	// already shown: show it longer
 	if (g_healthBars.contains(actor)) {
 		HealthBarGump *bar = dynamic_cast<HealthBarGump *>(getGump(g_healthBars[actor]));
 		if (bar && !bar->IsClosing()) {
 			bar->_age = 0;
+			bar->_fullHP = full;
 			return;
 		}
 	}
 
 	HealthBarGump *bar = new HealthBarGump(actor);
+	bar->_fullHP = full;
 	bar->InitGump(nullptr, false);
 	g_healthBars[actor] = bar->getObjId();
+	debug(1, "Health bar over %u: %d of %d", actor, getActor(actor)->getHP(), full);
 }
 
 } // End of namespace Ultima8

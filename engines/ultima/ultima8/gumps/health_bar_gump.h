@@ -44,12 +44,17 @@ public:
 	void Paint(RenderSurface *surf, int32 lerp_factor, bool scaled) override;
 	void PaintThis(RenderSurface *surf, int32 lerp_factor, bool scaled) override;
 
+	//! No notifier: a hit kills the processes of the actor (to stop what he
+	//! does), which would close us at once; we close when he is gone
+	void CreateNotifier() override {}
+
 	//! Show the health bar of an actor who was hit, if the option is on
 	static void show(uint16 actor);
 
 private:
 	HealthBarGump();
 	int _age;   //!< frames shown since the last hit
+	int _fullHP; //!< the hit points of a full bar
 };
 
 } // End of namespace Ultima8
