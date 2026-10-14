@@ -117,6 +117,10 @@ public:
 	static const unsigned int CJK_INTRO_FONT = 69;
 	//! CJK font of the damage numbers (damage_numbers, font_cjk_damage_*)
 	static const unsigned int CJK_DAMAGE_FONT = 70;
+	//! ... of the damage the Avatar takes (font_cjk_damage_avatar_*), and of
+	//! his blows that hit nothing (font_cjk_damage_miss_*)
+	static const unsigned int CJK_DAMAGE_AVATAR_FONT = 71;
+	static const unsigned int CJK_DAMAGE_MISS_FONT = 72;
 
 	//! cjkFont if it is set up (localized), else gameFont
 	unsigned int localizedFont(unsigned int gameFont, unsigned int cjkFont) const {

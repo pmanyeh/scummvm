@@ -30,15 +30,16 @@ namespace Ultima {
 namespace Ultima8 {
 
 /**
- * The damage the Avatar does, floating up from the actor he hit for about
- * a second ("-7", or "Blocked" when the armour took it all). Not saved.
+ * The damage an actor takes, floating up from him for about a second ("-7",
+ * or "Blocked" when the armour took it all), in another colour on the
+ * Avatar; "Miss" over the Avatar when his blow hit nothing. Not saved.
  * Game option damage_numbers.
  */
 class DamageGump : public ItemRelativeGump {
 public:
 	ENABLE_RUNTIME_CLASSTYPE()
 
-	DamageGump(uint16 owner, const Common::String &text);
+	DamageGump(uint16 owner, const Common::String &text, unsigned int cjkFont);
 	~DamageGump() override;
 
 	void run() override;
@@ -46,6 +47,11 @@ public:
 
 	//! Show the damage over an actor, if the option is on
 	static void show(uint16 actor, int damage);
+	//! Show that the Avatar's blow hit nothing, if the option is on
+	static void showMiss(uint16 actor);
+
+	//! Whether an actor is on the game map, to show something over him
+	static bool isOnMap(uint16 actor);
 
 private:
 	DamageGump();

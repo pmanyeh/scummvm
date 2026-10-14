@@ -22,6 +22,9 @@
 #include "common/config-manager.h"
 #include "ultima/ultima8/gumps/damage_gump.h"
 #include "ultima/ultima8/gfx/fonts/font_manager.h"
+#include "ultima/ultima8/gumps/game_map_gump.h"
+#include "ultima/ultima8/world/get_object.h"
+#include "ultima/ultima8/world/item.h"
 #include "ultima/ultima8/gumps/widgets/text_widget.h"
 #include "ultima/ultima8/misc/localization.h"
 #include "ultima/ultima8/ultima8.h"
@@ -37,10 +40,10 @@ static const int DAMAGE_FRAMES = 36;
 DamageGump::DamageGump() : ItemRelativeGump(), _age(0) {
 }
 
-DamageGump::DamageGump(uint16 owner, const Common::String &text) :
+DamageGump::DamageGump(uint16 owner, const Common::String &text, unsigned int cjkFont) :
 		ItemRelativeGump(0, 0, 0, 0, owner, FLAG_DONT_SAVE, LAYER_NORMAL), _age(0) {
-	// the font of the damage numbers (font_cjk_damage_*), or a game font
-	unsigned int font = FontManager::get_instance()->localizedFont(0, FontManager::CJK_DAMAGE_FONT);
+	// the font of the damage numbers (font_cjk_damage*_*), or a game font
+	unsigned int font = FontManager::get_instance()->localizedFont(0, cjkFont);
 	TextWidget *widget = new TextWidget(0, 0, text, true, font, 0, 0, Font::TEXT_CENTER);
 	widget->InitGump(this, false);
 	_dims = widget->getDims();
@@ -57,13 +60,22 @@ void DamageGump::run() {
 
 void DamageGump::Paint(RenderSurface *surf, int32 lerp_factor, bool scaled) {
 	GetItemLocation(lerp_factor);
-	// float up from above the head
-	_iy -= 4 + _age / 2;
+	// float up from above the head (and its health bar)
+	_iy -= 7 + _age / 2;
 	Gump::Paint(surf, lerp_factor, scaled);
 }
 
+bool DamageGump::isOnMap(uint16 actor) {
+	const Item *item = getItem(actor);
+	GameMapGump *map = Ultima8Engine::get_instance()->getGameMapGump();
+	if (!item || !map || !item->hasFlags(Item::FLG_FASTAREA) || item->getParentAsContainer())
+		return false;
+	int32 gx, gy;
+	return map->GetLocationOfItem(actor, gx, gy);
+}
+
 void DamageGump::show(uint16 actor, int damage) {
-	if (!GAME_IS_U8 || !ConfMan.getBool("damage_numbers"))
+	if (!GAME_IS_U8 || !ConfMan.getBool("damage_numbers") || !isOnMap(actor))
 		return;
 	Common::String text;
 	if (damage > 0) {
@@ -72,7 +84,17 @@ void DamageGump::show(uint16 actor, int damage) {
 		Localization *l10n = Localization::get_instance();
 		text = l10n && l10n->isActive() ? "\xE6\xA0\xBC\xE6\x93\x8B" : "Blocked"; // 格擋
 	}
-	Gump *gump = new DamageGump(actor, text);
+	unsigned int font = actor == kMainActorId ? FontManager::CJK_DAMAGE_AVATAR_FONT : FontManager::CJK_DAMAGE_FONT;
+	Gump *gump = new DamageGump(actor, text, font);
+	gump->InitGump(nullptr, false);
+}
+
+void DamageGump::showMiss(uint16 actor) {
+	if (!GAME_IS_U8 || !ConfMan.getBool("damage_numbers") || !isOnMap(actor))
+		return;
+	Localization *l10n = Localization::get_instance();
+	Common::String text = l10n && l10n->isActive() ? "\xE6\x8F\xAE\xE7\xA9\xBA" : "Miss"; // 揮空
+	Gump *gump = new DamageGump(actor, text, FontManager::CJK_DAMAGE_MISS_FONT);
 	gump->InitGump(nullptr, false);
 }
 

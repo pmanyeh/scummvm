@@ -24,6 +24,7 @@
 #include "common/config-manager.h"
 #include "ultima/ultima8/audio/audio_process.h"
 #include "ultima/ultima8/gfx/palette_fader_process.h"
+#include "ultima/ultima8/gumps/damage_gump.h"
 #include "ultima/ultima8/kernel/delay_process.h"
 #include "ultima/ultima8/kernel/kernel.h"
 #include "ultima/ultima8/misc/direction_util.h"
@@ -219,6 +220,10 @@ void ActorAnimProcess::run() {
 					_tracker->getSpeed(dx, dy, dz);
 					a->hurl(dx, dy, dz, 2);
 				}
+
+				// the Avatar's blow hit nothing (damage_numbers)
+				if (_itemNum == kMainActorId && GAME_IS_U8 && !_attackedSomething && isWeaponAttack())
+					DamageGump::showMiss(_itemNum);
 
 				terminate();
 				return;
@@ -538,6 +543,17 @@ void ActorAnimProcess::doFireWeaponCru(Actor *a, const AnimFrame *f) {
 }
 
 
+
+bool ActorAnimProcess::isWeaponAttack() const {
+	const AnimAction *action = _tracker ? _tracker->getAnimAction() : nullptr;
+	if (!action || !action->hasFlags(AnimAction::AAF_ATTACK))
+		return false;
+	for (unsigned int i = 0; i < action->getSize(); ++i) {
+		if (action->getFrame(dir_north, i).attack_range() > 0)
+			return true;
+	}
+	return false;
+}
 
 void ActorAnimProcess::doHitSpecial(Item *hit) {
 	Actor *a = getActor(_itemNum);

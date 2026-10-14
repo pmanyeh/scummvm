@@ -161,6 +161,8 @@ void U8AvatarMoverProcess::handleCombatMode() {
 			// double left click = attack
 			if (hasMovementFlags(MOVE_ANY_DIRECTION)) {
 				waitFor(avatar->doAnim(Animation::attack, direction));
+			} else if (ConfMan.getBool("attack_target")) {
+				attack(Animation::attack, mousedir);
 			} else {
 				if (checkTurn(mousedir, false))
 					return;
@@ -195,6 +197,8 @@ void U8AvatarMoverProcess::handleCombatMode() {
 			// double right click = kick
 			if (hasMovementFlags(MOVE_ANY_DIRECTION)) {
 				waitFor(avatar->doAnim(Animation::kick, direction));
+			} else if (ConfMan.getBool("attack_target")) {
+				attack(Animation::kick, mousedir);
 			} else {
 				if (checkTurn(mousedir, false))
 					return;
@@ -855,6 +859,35 @@ bool U8AvatarMoverProcess::canAttack() {
 	}
 
 	return (Kernel::get_instance()->getFrameNum() > _lastAttack + (25 - avatar->getDex()));
+}
+
+void U8AvatarMoverProcess::attack(Animation::Sequence action, Direction mousedir) {
+	MainActor *avatar = getMainActor();
+	Direction dir = mousedir;
+
+	// The direction of the mouse is from the middle of the screen, not
+	// from the Avatar: aim at the one under the mouse instead
+	Mouse *mouse = Mouse::get_instance();
+	int32 mx, my;
+	mouse->getMouseCoords(mx, my);
+	Gump *desktopgump = Ultima8Engine::get_instance()->getDesktopGump();
+	const Actor *target = getActor(desktopgump->TraceObjId(mx, my));
+	if (target && target != avatar && !target->isDead()) {
+		Point3 a = avatar->getCentre();
+		Point3 t = target->getCentre();
+		dir = Direction_GetWorldDir(t.y - a.y, t.x - a.x, dirmode_8dirs);
+		debug(1, "Attack target %u: direction %d (mouse %d)", target->getObjId(), dir, mousedir);
+	}
+
+	// turn first, then attack (the original only turned)
+	ProcId turnpid = avatar->turnTowardDir(dir);
+	ProcId animpid = avatar->doAnim(action, dir);
+	if (turnpid) {
+		Process *animproc = Kernel::get_instance()->getProcess(animpid);
+		if (animproc)
+			animproc->waitFor(turnpid);
+	}
+	waitFor(animpid);
 }
 
 void U8AvatarMoverProcess::saveData(Common::WriteStream *ws) {

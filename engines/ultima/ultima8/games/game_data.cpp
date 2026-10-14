@@ -510,6 +510,9 @@ void GameData::setupCategoryFonts(const Common::HashMap<int, uint32> &colours,
 		{ "intro", FontManager::CJK_INTRO_FONT, 6, 0, 0, -1, 0, nullptr },
 		// red with a dark edge
 		{ "damage", FontManager::CJK_DAMAGE_FONT, -1, 12, 0xFF4040, 1, 0, nullptr },
+		// the Avatar hurt: amber; a miss: grey
+		{ "damage_avatar", FontManager::CJK_DAMAGE_AVATAR_FONT, -1, 12, 0xFFB020, 1, 0, nullptr },
+		{ "damage_miss", FontManager::CJK_DAMAGE_MISS_FONT, -1, 12, 0xC8C8C8, 1, 0, nullptr },
 		// dark letters with the light edge of a carving
 		{ "grave", FontManager::CJK_GRAVE_FONT, -1, 32, 0x404040, 0, 0xAEAEAE, "WangHanZongWeiBeiTiFan-2.ttf" },
 		{ "plaque", FontManager::CJK_PLAQUE_FONT, -1, 32, 0x6A4A1C, 0, 0xFFDB61, "WangHanZongWeiBeiTiFan-2.ttf" }

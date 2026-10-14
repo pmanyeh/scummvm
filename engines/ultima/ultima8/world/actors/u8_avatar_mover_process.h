@@ -48,6 +48,9 @@ protected:
 	void handleCombatMode() override;
 	void handleNormalMode() override;
 	bool canAttack();
+	//! Attack (or kick) in a direction: toward the one under the mouse
+	//! (attack_target), turning first when needed
+	void attack(Animation::Sequence action, Direction mousedir);
 
 	void step(Animation::Sequence action, Direction direction, bool adjusted = false);
 	void jump(Animation::Sequence action, Direction direction);

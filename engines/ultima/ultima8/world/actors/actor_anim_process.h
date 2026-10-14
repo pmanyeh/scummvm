@@ -70,6 +70,9 @@ protected:
 	//! Fire weapon
 	void doFireWeaponCru(Actor *actor, const AnimFrame *frame);
 
+	//! Whether this is an attack animation with frames that can hit
+	bool isWeaponAttack() const;
+
 	Animation::Sequence _action;
 	Direction _dir;
 	uint32 _steps;

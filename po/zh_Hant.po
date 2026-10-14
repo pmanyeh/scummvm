@@ -15149,9 +15149,25 @@ msgid "With jump to mouse position, the Avatar lands with his whole footing on t
 msgstr "開啟「跳向滑鼠位置」時，聖者會整個人落在滑鼠所指的石頭或平台上；放不下就搖頭。關閉：原版的落點。"
 
 #: engines/ultima
-msgid "Show the damage of the Avatar's blows"
-msgstr "顯示聖者攻擊的傷害數字"
+msgid "Attack the one under the mouse"
+msgstr "攻擊滑鼠所指的對象"
 
 #: engines/ultima
-msgid "The damage the Avatar does floats up from the one he hit, or Blocked when the armour took it all."
-msgstr "聖者打中敵人時，敵人頭上會浮出傷害數字；被盔甲完全擋下時顯示「格擋」。"
+msgid "A double click to attack or kick turns the Avatar to the one under the mouse and strikes at once. Off: the direction of the mouse from the middle of the screen, and only a turn when he faces another way."
+msgstr "雙擊攻擊或踢腿時，聖者會轉向滑鼠所指的人物並立刻出手。關閉：依滑鼠相對畫面中央的方向，沒有面向該方向時只會轉身（原版）。"
+
+#: engines/ultima
+msgid "Show damage numbers"
+msgstr "顯示傷害數字"
+
+#: engines/ultima
+msgid "The damage anyone on the screen takes floats up from him (the Avatar's in amber), Blocked when the armour took it all, and Miss when the Avatar's blow hit nothing."
+msgstr "畫面上任何人受傷時，頭上會浮出傷害數字（聖者受傷為橘黃色）；被盔甲完全擋下時顯示「格擋」，聖者沒打中時顯示「揮空」。"
+
+#: engines/ultima
+msgid "Show the health bars of those hit"
+msgstr "顯示被攻擊者的血條"
+
+#: engines/ultima
+msgid "A bar of the hit points left over the one hit, for a few seconds."
+msgstr "人物被攻擊後，頭上顯示剩餘生命值的血條數秒。"
