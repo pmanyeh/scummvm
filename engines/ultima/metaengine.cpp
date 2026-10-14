@@ -101,7 +101,7 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 			_s("Enable high resolution"),
 			_s("Enable a higher resolution for the game"),
 			"usehighres",
-			false,
+			true,
 			0,
 			0
 		}

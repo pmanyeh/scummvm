@@ -509,9 +509,8 @@ bool Ultima8Engine::setupGame() {
 Common::Error Ultima8Engine::startupGame() {
 	debug(1, "-- Initializing Game: %s --", _gameInfo->_name.c_str());
 
-	if (ConfMan.hasKey("usehighres")) {
-		_highRes = ConfMan.getBool("usehighres");
-	}
+	// on by default (as the checkbox of the game options)
+	_highRes = !ConfMan.hasKey("usehighres") || ConfMan.getBool("usehighres");
 
 	if (GAME_IS_U8) {
 		ConfMan.registerDefault("width", _highRes ? U8_HIRES_SCREEN_WIDTH : U8_DEFAULT_SCREEN_WIDTH);
